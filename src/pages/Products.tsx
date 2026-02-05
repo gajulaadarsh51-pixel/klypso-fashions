@@ -19,52 +19,220 @@ const Products = () => {
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 50000]);
   const [sortBy, setSortBy] = useState("newest");
 
-  // ✅ REAL PRODUCT COUNT CALCULATION FUNCTION
+  // ✅ CATEGORY FILTERING HELPER FUNCTIONS
+  const isMenProduct = (product: any) => {
+    const productCategory = product.category?.toLowerCase() || '';
+    const productName = product.name?.toLowerCase() || '';
+    const productSubcategory = product.subcategory?.toLowerCase() || '';
+    
+    // Men's clothing and specific items
+    const isMenClothing = (
+      productCategory.includes("men") ||
+      productCategory.includes("mens") ||
+      productCategory.includes("men's") ||
+      productSubcategory.includes("men") ||
+      productSubcategory.includes("mens") ||
+      productSubcategory.includes("men's") ||
+      productName.includes("men") ||
+      productName.includes("men's") ||
+      productName.includes("mens") ||
+      // Men's specific clothing items
+      (productName.includes("shirt") && !productName.includes("blouse")) ||
+      productName.includes("formal shirt") ||
+      productName.includes("suit") ||
+      productName.includes("blazer") ||
+      productName.includes("trouser") ||
+      productName.includes("pants") ||
+      (productName.includes("jeans") && (
+        productName.includes("men") || 
+        productName.includes("men's")
+      )) ||
+      productName.includes("men t-shirt") ||
+      productName.includes("men's t-shirt") ||
+      (productCategory.includes("clothing") && productName.includes("men"))
+    );
+    
+    // Exclude women's, accessories, and jewelry
+    const isNotWomenOrAccessory = !(
+      productCategory.includes("women") ||
+      productCategory.includes("womens") ||
+      productCategory.includes("women's") ||
+      productCategory.includes("female") ||
+      productCategory.includes("ladies") ||
+      productName.includes("women") ||
+      productName.includes("womens") ||
+      productName.includes("women's") ||
+      productName.includes("female") ||
+      productName.includes("ladies") ||
+      productName.includes("dress") ||
+      productName.includes("gown") ||
+      productName.includes("saree") ||
+      productName.includes("lehenga") ||
+      productName.includes("blouse") ||
+      productName.includes("skirt") ||
+      productName.includes("top") ||
+      productName.includes("kurti") ||
+      // Accessories and jewelry
+      productCategory.includes("accessories") ||
+      productCategory.includes("accessory") ||
+      productCategory.includes("jewelry") ||
+      productCategory.includes("jewellery") ||
+      productName.includes("watch") ||
+      productName.includes("belt") ||
+      productName.includes("sunglass") ||
+      productName.includes("wallet") ||
+      productName.includes("bag") ||
+      productName.includes("handbag") ||
+      productName.includes("perfume") ||
+      productName.includes("cosmetic") ||
+      productName.includes("makeup") ||
+      productName.includes("lipstick") ||
+      productName.includes("eyeliner") ||
+      productName.includes("necklace") ||
+      productName.includes("earring") ||
+      productName.includes("ring") ||
+      productName.includes("bracelet") ||
+      productName.includes("bangle") ||
+      productName.includes("pendant") ||
+      productName.includes("chain") ||
+      productName.includes("anklet")
+    );
+    
+    return isMenClothing && isNotWomenOrAccessory;
+  };
+
+  const isAccessoryProduct = (product: any) => {
+    const productCategory = product.category?.toLowerCase() || '';
+    const productName = product.name?.toLowerCase() || '';
+    
+    // ACCESSORIES: WATCHES ONLY
+    return (
+      productCategory === "accessories" ||
+      productCategory.includes("accessories") ||
+      productCategory.includes("accessory") ||
+      productName.includes("watch")
+    );
+  };
+
+  // ✅ SIMPLIFIED CATEGORY COUNT CALCULATION
   const getCategoryCount = (categoryName: string) => {
     const categoryLower = categoryName.toLowerCase();
     
-    // Special handling for Women Accessories
-    if (categoryLower.includes('women') && categoryLower.includes('accessor')) {
+    if (categoryLower === "men") {
+      return products.filter(isMenProduct).length;
+    }
+    
+    if (categoryLower === "women") {
       return products.filter((product) => {
-        const productGender = product.gender?.toLowerCase() || '';
         const productCategory = product.category?.toLowerCase() || '';
+        const productName = product.name?.toLowerCase() || '';
         const productSubcategory = product.subcategory?.toLowerCase() || '';
         
-        const isWomen = productGender === 'women' || productGender === 'female';
-        const isAccessories = productCategory === 'accessories' || 
-                             productSubcategory === 'accessories' ||
-                             productCategory.includes('accessor') ||
-                             productSubcategory.includes('accessor');
+        // Women's clothing (excluding accessories, jewelry, beauty products)
+        const isWomenClothing = (
+          productCategory.includes("women") ||
+          productCategory.includes("womens") ||
+          productCategory.includes("women's") ||
+          productCategory.includes("female") ||
+          productCategory.includes("ladies") ||
+          productSubcategory.includes("women") ||
+          productSubcategory.includes("womens") ||
+          productSubcategory.includes("women's") ||
+          productSubcategory.includes("female") ||
+          productSubcategory.includes("ladies") ||
+          productName.includes("women") ||
+          productName.includes("womens") ||
+          productName.includes("women's") ||
+          productName.includes("female") ||
+          productName.includes("ladies") ||
+          // Women's specific clothing
+          productName.includes("dress") ||
+          productName.includes("gown") ||
+          productName.includes("saree") ||
+          productName.includes("lehenga") ||
+          productName.includes("blouse") ||
+          productName.includes("petticoat") ||
+          productName.includes("nightwear") ||
+          productName.includes("skirt") ||
+          productName.includes("top") ||
+          productName.includes("tunic") ||
+          productName.includes("kurti") ||
+          productName.includes("salwar") ||
+          productName.includes("churidar") ||
+          (productName.includes("jeans") && (
+            productName.includes("women") || 
+            productName.includes("womens") || 
+            productName.includes("ladies")
+          )) ||
+          (productCategory.includes("clothing") && (
+            productName.includes("women") || 
+            productName.includes("womens") || 
+            productName.includes("ladies") ||
+            productName.includes("female")
+          ))
+        );
         
-        return isWomen && isAccessories;
+        // Exclude accessories, jewelry, and beauty products
+        const isNotAccessoryOrJewelry = !(
+          productCategory.includes("accessories") ||
+          productCategory.includes("accessory") ||
+          productCategory.includes("jewelry") ||
+          productCategory.includes("jewellery") ||
+          productCategory.includes("beauty") ||
+          productCategory.includes("cosmetics") ||
+          productSubcategory.includes("accessories") ||
+          productSubcategory.includes("accessory") ||
+          productSubcategory.includes("jewelry") ||
+          productSubcategory.includes("jewellery") ||
+          productSubcategory.includes("beauty") ||
+          productSubcategory.includes("cosmetics") ||
+          productName.includes("watch") ||
+          productName.includes("belt") ||
+          productName.includes("sunglass") ||
+          productName.includes("wallet") ||
+          productName.includes("bag") ||
+          productName.includes("handbag") ||
+          productName.includes("perfume") ||
+          productName.includes("cologne") ||
+          productName.includes("fragrance") ||
+          productName.includes("makeup") ||
+          productName.includes("lipstick") ||
+          productName.includes("eyeliner") ||
+          productName.includes("mascara") ||
+          productName.includes("foundation") ||
+          productName.includes("necklace") ||
+          productName.includes("earring") ||
+          productName.includes("ring") ||
+          productName.includes("bracelet") ||
+          productName.includes("bangle") ||
+          productName.includes("pendant") ||
+          productName.includes("chain") ||
+          productName.includes("anklet")
+        );
+        
+        return isWomenClothing && isNotAccessoryOrJewelry;
       }).length;
     }
     
-    // Normal category calculation
+    if (categoryLower === "accessories") {
+      return products.filter(isAccessoryProduct).length;
+    }
+    
+    // For other categories (like electronics, home, etc.)
     return products.filter((product) => {
       const productCategory = product.category?.toLowerCase() || '';
-      const productGender = product.gender?.toLowerCase() || '';
       const productSubcategory = product.subcategory?.toLowerCase() || '';
-      const productTags = product.tags?.map((tag: string) => tag.toLowerCase()) || [];
-
+      
       return (
         productCategory === categoryLower ||
-        productGender === categoryLower ||
-        productSubcategory === categoryLower ||
         productCategory.includes(categoryLower) ||
-        productGender.includes(categoryLower) ||
-        productSubcategory.includes(categoryLower) ||
-        productTags.some(tag => tag.includes(categoryLower)) ||
-        (categoryLower === "men" && (productGender === "men" || productGender === "male")) ||
-        (categoryLower === "women" && (productGender === "women" || productGender === "female")) ||
-        (categoryLower === "watches" && (productCategory === "watches" || productSubcategory === "watches")) ||
-        (categoryLower === "tshirts" && (productCategory === "t-shirts" || productSubcategory === "tshirts")) ||
-        (categoryLower === "shoes" && (productCategory === "shoes" || productSubcategory === "footwear"))
+        productSubcategory === categoryLower ||
+        productSubcategory.includes(categoryLower)
       );
     }).length;
   };
 
-  // Check if we have state from navigation (for opening specific category)
+  // Check if we have state from navigation
   useEffect(() => {
     if (location.state?.openCategory) {
       const category = location.state.openCategory;
@@ -113,7 +281,7 @@ const Products = () => {
     setSortBy("newest");
   };
 
-  /* ================= ENHANCED FILTER LOGIC ================= */
+  /* ================= MAIN FILTER LOGIC ================= */
   const filteredProducts = useMemo(() => {
     let filtered = [...products];
 
@@ -123,7 +291,6 @@ const Products = () => {
         return (
           p.name?.toLowerCase().includes(searchTerm) ||
           p.category?.toLowerCase().includes(searchTerm) ||
-          p.gender?.toLowerCase().includes(searchTerm) ||
           p.subcategory?.toLowerCase().includes(searchTerm) ||
           p.tags?.some((tag: string) =>
             tag.toLowerCase().includes(searchTerm)
@@ -135,27 +302,117 @@ const Products = () => {
     else if (selectedCategory) {
       const cat = selectedCategory.toLowerCase();
 
-      filtered = filtered.filter((p) => {
-        const productCategory = p.category?.toLowerCase() || "";
-        const productGender = p.gender?.toLowerCase() || "";
-        const productSubcategory = p.subcategory?.toLowerCase() || "";
-        const productTags = p.tags?.map((tag: string) => tag.toLowerCase()) || [];
-
-        return (
-          productCategory === cat ||
-          productGender === cat ||
-          productSubcategory === cat ||
-          productCategory.includes(cat) ||
-          productGender.includes(cat) ||
-          productSubcategory.includes(cat) ||
-          productTags.some(tag => tag.includes(cat)) ||
-          (cat === "men" && (productGender === "men" || productGender === "male")) ||
-          (cat === "women" && (productGender === "women" || productGender === "female")) ||
-          (cat === "watches" && (productCategory === "watches" || productSubcategory === "watches")) ||
-          (cat === "tshirts" && (productCategory === "t-shirts" || productSubcategory === "tshirts")) ||
-          (cat === "shoes" && (productCategory === "shoes" || productSubcategory === "footwear"))
-        );
-      });
+      if (cat === "men") {
+        filtered = filtered.filter(isMenProduct);
+      }
+      else if (cat === "women") {
+        filtered = filtered.filter((product) => {
+          const productCategory = product.category?.toLowerCase() || '';
+          const productName = product.name?.toLowerCase() || '';
+          const productSubcategory = product.subcategory?.toLowerCase() || '';
+          
+          // Women's clothing (excluding accessories, jewelry, beauty products)
+          const isWomenClothing = (
+            productCategory.includes("women") ||
+            productCategory.includes("womens") ||
+            productCategory.includes("women's") ||
+            productCategory.includes("female") ||
+            productCategory.includes("ladies") ||
+            productSubcategory.includes("women") ||
+            productSubcategory.includes("womens") ||
+            productSubcategory.includes("women's") ||
+            productSubcategory.includes("female") ||
+            productSubcategory.includes("ladies") ||
+            productName.includes("women") ||
+            productName.includes("womens") ||
+            productName.includes("women's") ||
+            productName.includes("female") ||
+            productName.includes("ladies") ||
+            // Women's specific clothing
+            productName.includes("dress") ||
+            productName.includes("gown") ||
+            productName.includes("saree") ||
+            productName.includes("lehenga") ||
+            productName.includes("blouse") ||
+            productName.includes("petticoat") ||
+            productName.includes("nightwear") ||
+            productName.includes("skirt") ||
+            productName.includes("top") ||
+            productName.includes("tunic") ||
+            productName.includes("kurti") ||
+            productName.includes("salwar") ||
+            productName.includes("churidar") ||
+            (productName.includes("jeans") && (
+              productName.includes("women") || 
+              productName.includes("womens") || 
+              productName.includes("ladies")
+            )) ||
+            (productCategory.includes("clothing") && (
+              productName.includes("women") || 
+              productName.includes("womens") || 
+              productName.includes("ladies") ||
+              productName.includes("female")
+            ))
+          );
+          
+          // Exclude accessories, jewelry, and beauty products
+          const isNotAccessoryOrJewelry = !(
+            productCategory.includes("accessories") ||
+            productCategory.includes("accessory") ||
+            productCategory.includes("jewelry") ||
+            productCategory.includes("jewellery") ||
+            productCategory.includes("beauty") ||
+            productCategory.includes("cosmetics") ||
+            productSubcategory.includes("accessories") ||
+            productSubcategory.includes("accessory") ||
+            productSubcategory.includes("jewelry") ||
+            productSubcategory.includes("jewellery") ||
+            productSubcategory.includes("beauty") ||
+            productSubcategory.includes("cosmetics") ||
+            productName.includes("watch") ||
+            productName.includes("belt") ||
+            productName.includes("sunglass") ||
+            productName.includes("wallet") ||
+            productName.includes("bag") ||
+            productName.includes("handbag") ||
+            productName.includes("perfume") ||
+            productName.includes("cologne") ||
+            productName.includes("fragrance") ||
+            productName.includes("makeup") ||
+            productName.includes("lipstick") ||
+            productName.includes("eyeliner") ||
+            productName.includes("mascara") ||
+            productName.includes("foundation") ||
+            productName.includes("necklace") ||
+            productName.includes("earring") ||
+            productName.includes("ring") ||
+            productName.includes("bracelet") ||
+            productName.includes("bangle") ||
+            productName.includes("pendant") ||
+            productName.includes("chain") ||
+            productName.includes("anklet")
+          );
+          
+          return isWomenClothing && isNotAccessoryOrJewelry;
+        });
+      }
+      else if (cat === "accessories") {
+        filtered = filtered.filter(isAccessoryProduct);
+      }
+      else {
+        // For other categories (like electronics, home, etc.)
+        filtered = filtered.filter((p) => {
+          const productCategory = p.category?.toLowerCase() || "";
+          const productSubcategory = p.subcategory?.toLowerCase() || "";
+          
+          return (
+            productCategory === cat ||
+            productCategory.includes(cat) ||
+            productSubcategory === cat ||
+            productSubcategory.includes(cat)
+          );
+        });
+      }
     }
 
     // 🔥 SALE FILTER
@@ -274,7 +531,6 @@ const Products = () => {
                         selectedCategory?.toLowerCase() ===
                         cat.name.toLowerCase();
 
-                      // ✅ USING REAL COUNT CALCULATION
                       const categoryProductCount = getCategoryCount(cat.name);
 
                       return (
