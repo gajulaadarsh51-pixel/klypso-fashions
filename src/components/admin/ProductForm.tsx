@@ -15,132 +15,62 @@ interface ProductFormProps {
   isLoading?: boolean;
 }
 
-// Comprehensive size options
-const kidsSizes = {
-  // Kids T-Shirts/Shirts (Age-based)
-  'kids-tshirt': ['2-3Y', '3-4Y', '4-5Y', '5-6Y', '6-7Y', '7-8Y', '8-9Y', '9-10Y', '10-12Y', '12-14Y'],
-  
-  // Kids Pants (Age-based)
-  'kids-pants': ['2-3Y', '3-4Y', '4-5Y', '5-6Y', '6-7Y', '7-8Y', '8-9Y', '9-10Y', '10-12Y', '12-14Y'],
-  
-  // Kids Shoes (EU sizes)
-  'kids-shoes': ['EU 20', 'EU 21', 'EU 22', 'EU 23', 'EU 24', 'EU 25', 'EU 26', 'EU 27', 'EU 28', 'EU 29', 'EU 30', 'EU 31', 'EU 32', 'EU 33', 'EU 34', 'EU 35', 'EU 36'],
-};
-
-const menSizes = {
-  // Men's T-Shirts/Shirts (Standard)
-  'men-tshirt': ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', '4XL', '5XL'],
-  
-  // Men's Formal Shirts (Collar size in inches)
-  'men-shirt': ['14"', '14.5"', '15"', '15.5"', '16"', '16.5"', '17"', '17.5"', '18"'],
-  
-  // Men's Pants (Waist size in inches)
-  'men-pants': ['28"', '30"', '32"', '34"', '36"', '38"', '40"', '42"', '44"', '46"', '48"'],
-  
-  // Men's Jeans (Waist x Length)
-  'men-jeans': ['28x30', '30x30', '30x32', '32x30', '32x32', '34x30', '34x32', '36x30', '36x32', '38x32', '40x32'],
-};
-
-const womenSizes = {
-  // Women's T-Shirts/Tops (Standard)
-  'women-tshirt': ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'],
-  
-  // Women's Tops/Blouses
-  'women-tops': ['XS', 'S', 'M', 'L', 'XL', 'XXL'],
-  
-  // Women's Pants (Waist size)
-  'women-pants': ['24"', '26"', '28"', '30"', '32"', '34"', '36"', '38"', '40"'],
-  
-  // Women's Jeans (Waist x Length)
-  'women-jeans': ['24x30', '26x30', '28x30', '28x32', '30x30', '30x32', '32x30', '32x32'],
-  
-  // Women's Nightwear (Standard)
-  'women-nightwear': ['XS', 'S', 'M', 'L', 'XL', 'XXL'],
-  
-  // Women's Saree Blouse (Chest size in inches)
-  'saree-blouse': ['28"', '30"', '32"', '34"', '36"', '38"', '40"', '42"'],
-  
-  // Petticoat (Waist size)
-  'petticoat': ['26"', '28"', '30"', '32"', '34"', '36"', '38"', '40"'],
-};
-
-const unisexSizes = {
-  // Unisex apparel
-  'unisex': ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'],
-};
-
-const shoeSizes = {
-  // Men's Shoes (US sizes)
-  'men-shoes': ['US 6', 'US 7', 'US 8', 'US 9', 'US 10', 'US 11', 'US 12', 'US 13', 'US 14'],
-  
-  // Women's Shoes (US sizes)
-  'women-shoes': ['US 4', 'US 5', 'US 6', 'US 7', 'US 8', 'US 9', 'US 10', 'US 11'],
-};
-
-const accessorySizes = {
-  // Watches
-  'watches': ['28mm', '32mm', '36mm', '38mm', '40mm', '42mm', '44mm', '46mm', 'Adjustable'],
-  
-  // Jewelry
-  'jewelry': ['16"', '17"', '18"', '19"', '20"', '21"', '22"', '24"', 'Adjustable'],
-  
-  // Belts (Waist size)
-  'belts': ['28"', '30"', '32"', '34"', '36"', '38"', '40"', '42"'],
-};
-
-const oneSize = ['One Size'];
-
-// Size type categories
+// Comprehensive size options - reorganized for better categorization
 const sizeCategories = [
   {
     category: 'Kids',
     types: [
-      { id: 'kids-tshirt', label: 'Kids T-Shirts & Shirts', sizes: kidsSizes['kids-tshirt'] },
-      { id: 'kids-pants', label: 'Kids Pants', sizes: kidsSizes['kids-pants'] },
-      { id: 'kids-shoes', label: 'Kids Shoes', sizes: kidsSizes['kids-shoes'] },
+      { id: 'kids-tshirt', label: 'Kids T-Shirts & Shirts', sizes: ['2-3Y', '3-4Y', '4-5Y', '5-6Y', '6-7Y', '7-8Y', '8-9Y', '9-10Y', '10-12Y', '12-14Y'] },
+      { id: 'kids-pants', label: 'Kids Pants', sizes: ['2-3Y', '3-4Y', '4-5Y', '5-6Y', '6-7Y', '7-8Y', '8-9Y', '9-10Y', '10-12Y', '12-14Y'] },
+      { id: 'kids-shoes', label: 'Kids Shoes', sizes: ['EU 20', 'EU 21', 'EU 22', 'EU 23', 'EU 24', 'EU 25', 'EU 26', 'EU 27', 'EU 28', 'EU 29', 'EU 30', 'EU 31', 'EU 32', 'EU 33', 'EU 34', 'EU 35', 'EU 36'] },
     ]
   },
   {
     category: 'Men',
     types: [
-      { id: 'men-tshirt', label: 'Men T-Shirts', sizes: menSizes['men-tshirt'] },
-      { id: 'men-shirt', label: 'Men Formal Shirts', sizes: menSizes['men-shirt'] },
-      { id: 'men-pants', label: 'Men Pants', sizes: menSizes['men-pants'] },
-      { id: 'men-jeans', label: 'Men Jeans', sizes: menSizes['men-jeans'] },
-      { id: 'men-shoes', label: 'Men Shoes', sizes: shoeSizes['men-shoes'] },
+      { id: 'men-tshirt', label: 'Men T-Shirts', sizes: ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', '4XL', '5XL'] },
+      { id: 'men-shirt', label: 'Men Formal Shirts', sizes: ['14"', '14.5"', '15"', '15.5"', '16"', '16.5"', '17"', '17.5"', '18"'] },
+      { id: 'men-pants', label: 'Men Pants', sizes: ['28"', '30"', '32"', '34"', '36"', '38"', '40"', '42"', '44"', '46"', '48"'] },
+      { id: 'men-jeans', label: 'Men Jeans', sizes: ['28x30', '30x30', '30x32', '32x30', '32x32', '34x30', '34x32', '36x30', '36x32', '38x32', '40x32'] },
+      { id: 'men-shoes', label: 'Men Shoes', sizes: ['US 6', 'US 7', 'US 8', 'US 9', 'US 10', 'US 11', 'US 12', 'US 13', 'US 14'] },
     ]
   },
   {
     category: 'Women',
     types: [
-      { id: 'women-tshirt', label: 'Women T-Shirts', sizes: womenSizes['women-tshirt'] },
-      { id: 'women-tops', label: 'Women Tops & Blouses', sizes: womenSizes['women-tops'] },
-      { id: 'women-pants', label: 'Women Pants', sizes: womenSizes['women-pants'] },
-      { id: 'women-jeans', label: 'Women Jeans', sizes: womenSizes['women-jeans'] },
-      { id: 'women-nightwear', label: 'Women Nightwear', sizes: womenSizes['women-nightwear'] },
-      { id: 'saree-blouse', label: 'Saree Blouse', sizes: womenSizes['saree-blouse'] },
-      { id: 'petticoat', label: 'Petticoat', sizes: womenSizes['petticoat'] },
-      { id: 'women-shoes', label: 'Women Shoes', sizes: shoeSizes['women-shoes'] },
+      { id: 'women-tshirt', label: 'Women T-Shirts', sizes: ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'] },
+      { id: 'women-tops', label: 'Women Tops & Blouses', sizes: ['XS', 'S', 'M', 'L', 'XL', 'XXL'] },
+      { id: 'women-dresses', label: 'Women Dresses', sizes: ['XS', 'S', 'M', 'L', 'XL', 'XXL'] },
+      { id: 'women-pants', label: 'Women Pants', sizes: ['24"', '26"', '28"', '30"', '32"', '34"', '36"', '38"', '40"'] },
+      { id: 'women-jeans', label: 'Women Jeans', sizes: ['24x30', '26x30', '28x30', '28x32', '30x30', '30x32', '32x30', '32x32'] },
+      { id: 'women-nightwear', label: 'Women Nightwear', sizes: ['XS', 'S', 'M', 'L', 'XL', 'XXL'] },
+      { id: 'saree-blouse', label: 'Saree Blouse', sizes: ['28"', '30"', '32"', '34"', '36"', '38"', '40"', '42"'] },
+      { id: 'petticoat', label: 'Petticoat', sizes: ['26"', '28"', '30"', '32"', '34"', '36"', '38"', '40"'] },
+      { id: 'women-shoes', label: 'Women Shoes', sizes: ['US 4', 'US 5', 'US 6', 'US 7', 'US 8', 'US 9', 'US 10', 'US 11'] },
+      { id: 'saree', label: 'Saree', sizes: ['One Size'] },
+      { id: 'lehenga', label: 'Lehenga', sizes: ['XS', 'S', 'M', 'L', 'XL'] },
     ]
   },
   {
     category: 'Unisex',
     types: [
-      { id: 'unisex', label: 'Unisex Clothing', sizes: unisexSizes['unisex'] },
+      { id: 'unisex', label: 'Unisex Clothing', sizes: ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'] },
     ]
   },
   {
     category: 'Accessories',
     types: [
-      { id: 'watches', label: 'Watches', sizes: accessorySizes['watches'] },
-      { id: 'jewelry', label: 'Jewelry', sizes: accessorySizes['jewelry'] },
-      { id: 'belts', label: 'Belts', sizes: accessorySizes['belts'] },
+      { id: 'watches', label: 'Watches', sizes: ['28mm', '32mm', '36mm', '38mm', '40mm', '42mm', '44mm', '46mm', 'Adjustable'] },
+      { id: 'jewelry', label: 'Jewelry', sizes: ['16"', '17"', '18"', '19"', '20"', '21"', '22"', '24"', 'Adjustable'] },
+      { id: 'belts', label: 'Belts', sizes: ['28"', '30"', '32"', '34"', '36"', '38"', '40"', '42"'] },
+      { id: 'bags', label: 'Bags', sizes: ['One Size'] },
+      { id: 'sunglasses', label: 'Sunglasses', sizes: ['One Size'] },
     ]
   },
   {
     category: 'Other',
     types: [
-      { id: 'one-size', label: 'One Size', sizes: oneSize },
+      { id: 'one-size', label: 'One Size', sizes: ['One Size'] },
       { id: 'custom', label: 'Custom Sizes', sizes: [] }
     ]
   }
@@ -148,6 +78,92 @@ const sizeCategories = [
 
 // Flatten all size types for easy access
 const allSizeTypes = sizeCategories.flatMap(cat => cat.types);
+
+// Helper function to normalize text for comparison
+const normalizeText = (text: string): string => {
+  return text?.toString().toLowerCase().trim().replace(/\s+/g, ' ') || '';
+};
+
+// Function to detect size type based on product data
+const detectSizeType = (product: Product): string => {
+  if (!product) return 'custom';
+  
+  const existingSizes = product.sizes || [];
+  const category = normalizeText(product.category);
+  
+  // Check for one size first
+  if (existingSizes.length === 1 && existingSizes[0] === 'One Size') {
+    // Check if it's a specific one-size product type
+    if (category.includes('saree')) return 'saree';
+    if (category.includes('bag') || category.includes('accessory')) return 'bags';
+    return 'one-size';
+  }
+  
+  // Try to detect based on product category first
+  if (category.includes('women') || category.includes('woman') || category.includes('female') || category.includes('ladies')) {
+    // Women's categories
+    if (category.includes('saree') || category.includes('blouse')) return 'saree-blouse';
+    if (category.includes('lehenga')) return 'lehenga';
+    if (category.includes('petticoat')) return 'petticoat';
+    if (category.includes('nightwear') || category.includes('nightdress')) return 'women-nightwear';
+    if (category.includes('dress') || category.includes('gown')) return 'women-dresses';
+    if (category.includes('top') || category.includes('blouse')) return 'women-tops';
+    if (category.includes('jeans')) return 'women-jeans';
+    if (category.includes('pant') || category.includes('trouser')) return 'women-pants';
+    if (category.includes('shoe') || category.includes('footwear')) return 'women-shoes';
+    if (category.includes('tshirt') || category.includes('t-shirt')) return 'women-tshirt';
+    // Default women's
+    return 'women-tops';
+  }
+  
+  if (category.includes('men') || category.includes('man') || category.includes('male') || category.includes('gentlemen')) {
+    // Men's categories
+    if (category.includes('shirt') && (category.includes('formal') || category.includes('office'))) return 'men-shirt';
+    if (category.includes('tshirt') || category.includes('t-shirt')) return 'men-tshirt';
+    if (category.includes('jeans')) return 'men-jeans';
+    if (category.includes('pant') || category.includes('trouser')) return 'men-pants';
+    if (category.includes('shoe') || category.includes('footwear')) return 'men-shoes';
+    // Default men's
+    return 'men-tshirt';
+  }
+  
+  if (category.includes('kid') || category.includes('child') || category.includes('baby')) {
+    // Kids categories
+    if (category.includes('shoe')) return 'kids-shoes';
+    if (category.includes('pant')) return 'kids-pants';
+    // Default kids
+    return 'kids-tshirt';
+  }
+  
+  if (category.includes('accessor') || category.includes('jewelry') || category.includes('watch')) {
+    if (category.includes('watch')) return 'watches';
+    if (category.includes('jewelry') || category.includes('necklace') || category.includes('bracelet')) return 'jewelry';
+    if (category.includes('belt')) return 'belts';
+    if (category.includes('bag')) return 'bags';
+    if (category.includes('sunglass')) return 'sunglasses';
+    return 'watches';
+  }
+  
+  if (category.includes('unisex')) {
+    return 'unisex';
+  }
+  
+  // Fallback: Try to match sizes with available size types
+  for (const sizeType of allSizeTypes) {
+    if (sizeType.id === 'custom' || sizeType.id === 'one-size') continue;
+    
+    // Check if any size matches exactly
+    const matchingSizes = existingSizes.filter(size => sizeType.sizes.includes(size));
+    if (matchingSizes.length > 0) {
+      // If most sizes match or we have a significant match
+      if (matchingSizes.length >= existingSizes.length / 2) {
+        return sizeType.id;
+      }
+    }
+  }
+  
+  return 'custom';
+};
 
 // Function to convert Google Drive URL to direct image URL
 const convertGoogleDriveUrl = (url: string): string => {
@@ -197,7 +213,7 @@ const ProductForm = ({ product, onSubmit, onCancel, isLoading }: ProductFormProp
     category: '',
     subcategory: '',
     images: [''],
-    sizes: ['M'], // Default to M
+    sizes: ['M'],
     colors: [{ name: 'Black', hex: '#000000' }],
     stock: 0,
     is_new: false,
@@ -206,42 +222,26 @@ const ProductForm = ({ product, onSubmit, onCancel, isLoading }: ProductFormProp
   });
 
   // State for size type and custom sizes
-  const [sizeType, setSizeType] = useState<string>('men-tshirt');
+  const [sizeType, setSizeType] = useState<string>('custom');
   const [customSizes, setCustomSizes] = useState<string[]>(['']);
   
   // Store original URLs for display
   const [originalImageUrls, setOriginalImageUrls] = useState<string[]>(['']);
 
+  // Initialize form when product changes
   useEffect(() => {
     if (product) {
-      // Determine size type based on existing sizes
-      const existingSizes = product.sizes || [];
-      let detectedSizeType = 'custom';
-      
-      // Try to detect size type by comparing with all available sizes
-      for (const type of allSizeTypes) {
-        if (type.id === 'custom') continue;
-        
-        // Check if most sizes match this type
-        const matchingSizes = existingSizes.filter(size => type.sizes.includes(size));
-        if (matchingSizes.length > 0 && matchingSizes.length / existingSizes.length > 0.5) {
-          detectedSizeType = type.id;
-          break;
-        }
-      }
-      
-      // Check for one size
-      if (existingSizes.length === 1 && existingSizes[0] === 'One Size') {
-        detectedSizeType = 'one-size';
-      }
+      // Detect size type based on product data
+      const detectedSizeType = detectSizeType(product);
       
       setSizeType(detectedSizeType);
       
       // If custom sizes, populate customSizes
       if (detectedSizeType === 'custom') {
-        setCustomSizes(existingSizes.length > 0 ? existingSizes : ['']);
+        setCustomSizes(product.sizes.length > 0 ? product.sizes : ['']);
       }
       
+      // Set form data
       setFormData({
         name: product.name,
         description: product.description || '',
@@ -257,8 +257,29 @@ const ProductForm = ({ product, onSubmit, onCancel, isLoading }: ProductFormProp
         is_on_sale: product.is_on_sale,
         is_active: product.is_active,
       });
+      
       // Store original URLs
       setOriginalImageUrls(product.images.length > 0 ? product.images : ['']);
+    } else {
+      // Reset to defaults for new product
+      setFormData({
+        name: '',
+        description: '',
+        price: 0,
+        original_price: undefined,
+        category: '',
+        subcategory: '',
+        images: [''],
+        sizes: ['M'],
+        colors: [{ name: 'Black', hex: '#000000' }],
+        stock: 0,
+        is_new: false,
+        is_on_sale: false,
+        is_active: true,
+      });
+      setSizeType('custom');
+      setCustomSizes(['']);
+      setOriginalImageUrls(['']);
     }
   }, [product]);
 
@@ -270,24 +291,25 @@ const ProductForm = ({ product, onSubmit, onCancel, isLoading }: ProductFormProp
         ...prev,
         sizes: customSizes.filter(size => size.trim() !== ''),
       }));
+    } else if (sizeType === 'one-size') {
+      // For one-size, select the only option
+      setFormData(prev => ({
+        ...prev,
+        sizes: ['One Size'],
+      }));
     } else {
       // For predefined size types, get the default sizes
       const selectedSizeType = allSizeTypes.find(type => type.id === sizeType);
       if (selectedSizeType) {
-        // For one-size, select the only option
-        if (sizeType === 'one-size') {
-          setFormData(prev => ({
-            ...prev,
-            sizes: ['One Size'],
-          }));
-        } else {
-          // For other types, select the middle size as default
-          const middleIndex = Math.floor(selectedSizeType.sizes.length / 2);
-          setFormData(prev => ({
-            ...prev,
-            sizes: selectedSizeType.sizes.length > 0 ? [selectedSizeType.sizes[middleIndex]] : [],
-          }));
-        }
+        // Select the middle size as default, or first size if only one
+        const defaultSize = selectedSizeType.sizes.length > 0 
+          ? selectedSizeType.sizes[Math.min(2, selectedSizeType.sizes.length - 1)]
+          : '';
+        
+        setFormData(prev => ({
+          ...prev,
+          sizes: defaultSize ? [defaultSize] : [],
+        }));
       }
     }
   }, [sizeType, customSizes]);
@@ -752,13 +774,15 @@ const ProductForm = ({ product, onSubmit, onCancel, isLoading }: ProductFormProp
               </div>
             ) : null}
             
-            {sizeType.includes('saree') || sizeType.includes('petticoat') ? (
+            {sizeType.includes('saree') || sizeType.includes('petticoat') || sizeType.includes('blouse') ? (
               <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg">
                 <p className="text-xs text-purple-800">
                   <span className="font-medium">Traditional Wear:</span> 
                   {sizeType === 'saree-blouse' 
                     ? ' Blouse sizes are chest measurements in inches.'
-                    : ' Petticoat sizes are waist measurements in inches.'}
+                    : sizeType === 'petticoat'
+                    ? ' Petticoat sizes are waist measurements in inches.'
+                    : ' One size fits most.'}
                 </p>
               </div>
             ) : null}

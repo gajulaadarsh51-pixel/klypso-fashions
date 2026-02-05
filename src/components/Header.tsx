@@ -11,6 +11,7 @@ import {
   User,
   Package,
   Heart,
+  ChevronRight,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -101,57 +102,6 @@ const getAllSearchVariations = (searchTerm: string): string[] => {
   return Array.from(allVariations);
 };
 
-// Function to fetch intelligent search results
-const fetchIntelligentSearchResults = async (searchTerm: string) => {
-  try {
-    const searchVariations = getAllSearchVariations(searchTerm);
-    
-    if (searchVariations.length === 0) {
-      return [];
-    }
-    
-    // First, try exact or close category matches
-    const { data: categoryData, error: categoryError } = await supabase
-      .from("products")
-      .select("*")
-      .or(searchVariations.map(term => `category.ilike.%${term}%`).join(','))
-      .eq("is_active", true)
-      .limit(15);
-
-    // If we have good category matches, return them
-    if (categoryData && categoryData.length >= 3) {
-      return categoryData;
-    }
-
-    // Otherwise, search across all fields
-    const { data: allFieldsData, error: allFieldsError } = await supabase
-      .from("products")
-      .select("*")
-      .or(searchVariations.map(term => 
-        `category.ilike.%${term}%,name.ilike.%${term}%,subcategory.ilike.%${term}%,description.ilike.%${term}%`
-      ).join(','))
-      .eq("is_active", true)
-      .limit(15);
-
-    if (allFieldsError) {
-      console.error("Error fetching search results:", allFieldsError);
-      return [];
-    }
-
-    // Sort results by relevance
-    const sortedResults = (allFieldsData || []).sort((a, b) => {
-      const aScore = calculateRelevanceScore(a, searchVariations);
-      const bScore = calculateRelevanceScore(b, searchVariations);
-      return bScore - aScore;
-    });
-
-    return sortedResults.slice(0, 10);
-  } catch (error) {
-    console.error("Error in fetchIntelligentSearchResults:", error);
-    return [];
-  }
-};
-
 // Calculate relevance score for sorting
 const calculateRelevanceScore = (product: any, searchTerms: string[]): number => {
   let score = 0;
@@ -175,6 +125,21 @@ const calculateRelevanceScore = (product: any, searchTerms: string[]): number =>
     // Description match
     if (normalize(product.description).includes(term)) {
       score += 1;
+    }
+    
+    // Gender match (if term is gender-related)
+    if (product.gender && ['men', 'women', 'male', 'female', 'ladies', 'gentlemen'].includes(term)) {
+      const productGender = normalize(product.gender);
+      if (
+        (term === 'men' && productGender.includes('men')) ||
+        (term === 'women' && productGender.includes('women')) ||
+        (term === 'male' && productGender.includes('male')) ||
+        (term === 'female' && productGender.includes('female')) ||
+        (term === 'ladies' && productGender.includes('ladies')) ||
+        (term === 'gentlemen' && productGender.includes('gentlemen'))
+      ) {
+        score += 6; // Higher weight for gender match
+      }
     }
     
     // Bonus for new and sale items
@@ -218,6 +183,177 @@ const fetchPopularCategories = async () => {
   }
 };
 
+// Function to fetch intelligent search results - FIXED FOR GENDER SPECIFIC SEARCH
+const fetchIntelligentSearchResults = async (searchTerm: string) => {
+  try {
+    const term = normalize(searchTerm);
+    console.log("Searching for term:", term);
+
+    // Get all search variations
+    const searchVariations = getAllSearchVariations(searchTerm);
+    
+    if (searchVariations.length === 0) {
+      return [];
+    }
+    
+    // Build OR conditions for each search variation
+    const conditions = searchVariations.map(variation => 
+      `category.ilike.%${variation}%,name.ilike.%${variation}%,subcategory.ilike.%${variation}%,description.ilike.%${variation}%`
+    ).join(',');
+
+    // Define gender-specific terms more strictly
+    const womenTerms = ['women', 'womens', 'woman', 'female', 'ladies', 'women\'s', 'girl', 'girls'];
+    const menTerms = ['men', 'mens', 'man', 'male', 'gentlemen', 'men\'s', 'boy', 'boys'];
+    
+    // Check for MEN search - FIXED: Only return men's products
+    if (menTerms.includes(term) || searchVariations.some(v => menTerms.includes(v))) {
+      console.log("Searching for MEN products only with strict filtering");
+      
+      // Get ALL active products first
+      const { data, error } = await supabase
+        .from("products")
+        .select("*")
+        .eq("is_active", true)
+        .limit(50); // Get more products to filter properly
+
+      if (error) {
+        console.error("Error fetching men products:", error);
+        return [];
+      }
+      
+      // STRICT FILTERING: Only return products that are explicitly for men
+      const filteredData = (data || []).filter(product => {
+        const productGender = normalize(product.gender || '');
+        const productCategory = normalize(product.category || '');
+        const productName = normalize(product.name || '');
+        const productSubcategory = normalize(product.subcategory || '');
+        
+        // Check if product is explicitly for men
+        const isForMen = 
+          productGender.includes('men') ||
+          productGender.includes('male') ||
+          productGender.includes('gentlemen') ||
+          productCategory.includes('men') ||
+          productCategory.includes('male') ||
+          productCategory.includes('gentlemen') ||
+          productName.includes('men') ||
+          productName.includes('male') ||
+          productName.includes('gentlemen') ||
+          productSubcategory.includes('men') ||
+          productSubcategory.includes('male') ||
+          productSubcategory.includes('gentlemen');
+        
+        // Check if product is NOT for women
+        const isForWomen = 
+          productGender.includes('women') ||
+          productGender.includes('female') ||
+          productGender.includes('ladies') ||
+          productGender.includes('girl') ||
+          productCategory.includes('women') ||
+          productCategory.includes('female') ||
+          productCategory.includes('ladies') ||
+          productCategory.includes('girl') ||
+          productName.includes('women') ||
+          productName.includes('female') ||
+          productName.includes('ladies') ||
+          productName.includes('girl') ||
+          productSubcategory.includes('women') ||
+          productSubcategory.includes('female') ||
+          productSubcategory.includes('ladies') ||
+          productSubcategory.includes('girl');
+        
+        return isForMen && !isForWomen;
+      });
+      
+      console.log(`Found ${filteredData.length} men's products after strict filtering`);
+      return filteredData.slice(0, 30);
+    }
+    
+    // Check for WOMEN search - FIXED: Only return women's products
+    if (womenTerms.includes(term) || searchVariations.some(v => womenTerms.includes(v))) {
+      console.log("Searching for WOMEN products only with strict filtering");
+      
+      // Get ALL active products first
+      const { data, error } = await supabase
+        .from("products")
+        .select("*")
+        .eq("is_active", true)
+        .limit(50); // Get more products to filter properly
+
+      if (error) {
+        console.error("Error fetching women products:", error);
+        return [];
+      }
+      
+      // STRICT FILTERING: Only return products that are explicitly for women
+      const filteredData = (data || []).filter(product => {
+        const productGender = normalize(product.gender || '');
+        const productCategory = normalize(product.category || '');
+        const productName = normalize(product.name || '');
+        const productSubcategory = normalize(product.subcategory || '');
+        
+        // Check if product is explicitly for women
+        const isForWomen = 
+          productGender.includes('women') ||
+          productGender.includes('female') ||
+          productGender.includes('ladies') ||
+          productGender.includes('girl') ||
+          productCategory.includes('women') ||
+          productCategory.includes('female') ||
+          productCategory.includes('ladies') ||
+          productCategory.includes('girl') ||
+          productName.includes('women') ||
+          productName.includes('female') ||
+          productName.includes('ladies') ||
+          productName.includes('girl') ||
+          productSubcategory.includes('women') ||
+          productSubcategory.includes('female') ||
+          productSubcategory.includes('ladies') ||
+          productSubcategory.includes('girl');
+        
+        // Check if product is NOT for men
+        const isForMen = 
+          productGender.includes('men') ||
+          productGender.includes('male') ||
+          productGender.includes('gentlemen') ||
+          productCategory.includes('men') ||
+          productCategory.includes('male') ||
+          productCategory.includes('gentlemen') ||
+          productName.includes('men') ||
+          productName.includes('male') ||
+          productName.includes('gentlemen') ||
+          productSubcategory.includes('men') ||
+          productSubcategory.includes('male') ||
+          productSubcategory.includes('gentlemen');
+        
+        return isForWomen && !isForMen;
+      });
+      
+      console.log(`Found ${filteredData.length} women's products after strict filtering`);
+      return filteredData.slice(0, 30);
+    }
+    
+    // For non-gender-specific searches, use the general search
+    console.log("Non-gender specific search, using general conditions");
+    const { data, error } = await supabase
+      .from("products")
+      .select("*")
+      .eq("is_active", true)
+      .or(conditions)
+      .limit(30);
+
+    if (error) {
+      console.error("Error fetching search results:", error);
+      return [];
+    }
+    
+    return data || [];
+  } catch (e) {
+    console.error("Error in fetchIntelligentSearchResults:", e);
+    return [];
+  }
+};
+
 interface HeaderProps {
   activeCategory?: string;
 }
@@ -231,7 +367,7 @@ interface AccountIconsProps {
   showOrders?: boolean;
 }
 
-const AccountIcons = ({ onOpenProfile, onOpenOrders, iconColor = "text-gray-800", showProfile = true, showOrders = true }: AccountIconsProps) => {
+const AccountIcons = ({ onOpenProfile, onOpenOrders, iconColor = "text-white", showProfile = true, showOrders = true }: AccountIconsProps) => {
   const { isAuthenticated } = useAuth();
 
   return (
@@ -240,11 +376,11 @@ const AccountIcons = ({ onOpenProfile, onOpenOrders, iconColor = "text-gray-800"
       {showProfile && (
         <button
           onClick={onOpenProfile}
-          className="hidden lg:flex p-2 hover:bg-[#E9E1D8]/50 rounded-md transition-colors relative group flex-shrink-0"
+          className="hidden lg:flex p-2 hover:bg-[#E9E1D8]/30 rounded-md transition-colors relative group flex-shrink-0"
           aria-label="Account"
         >
           <User size={20} className={iconColor} />
-          <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
+          <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 px-2 py-1 bg-[#E9E1D8] text-gray-800 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
             {isAuthenticated ? 'My Profile' : 'Sign In'}
           </div>
         </button>
@@ -254,11 +390,11 @@ const AccountIcons = ({ onOpenProfile, onOpenOrders, iconColor = "text-gray-800"
       {showOrders && isAuthenticated && (
         <button
           onClick={onOpenOrders}
-          className="hidden lg:flex p-2 hover:bg-[#E9E1D8]/50 rounded-md transition-colors relative group"
+          className="hidden lg:flex p-2 hover:bg-[#E9E1D8]/30 rounded-md transition-colors relative group"
           aria-label="Orders"
         >
           <Package size={20} className={iconColor} />
-          <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
+          <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 px-2 py-1 bg-[#E9E1D8] text-gray-800 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
             My Orders
           </div>
         </button>
@@ -356,15 +492,15 @@ const HeaderIconBar = ({ onIconClick }: HeaderIconBarProps) => {
             img.src = `https://lh3.googleusercontent.com/d/${fileId}=s400`;
             
             img.onerror = () => {
-              img.src = "https://via.placeholder.com/64/E9E1D8/6B6254?text=Icon";
+              img.src = "https://via.placeholder.com/64/cccccc/969696?text=Icon";
             };
           };
         };
       } else {
-        img.src = "https://via.placeholder.com/64/E9E1D8/6B6254?text=Icon";
+        img.src = "https://via.placeholder.com/64/cccccc/969696?text=Icon";
       }
     } else {
-      img.src = "https://via.placeholder.com/64/E9E1D8/6B6254?text=Icon";
+      img.src = "https://via.placeholder.com/64/cccccc/969696?text=Icon";
     }
   };
 
@@ -488,36 +624,68 @@ const HeaderIconBar = ({ onIconClick }: HeaderIconBarProps) => {
   if (!icons.length) return null;
 
   return (
-    <div 
-      ref={containerRef}
-      className="relative bg-[#E9E1D8]"
-      onMouseDown={(e) => {
-        const container = containerRef.current;
-        if (!container) return;
-
-        const startX = e.pageX - container.offsetLeft;
-        const scrollLeft = container.scrollLeft;
-
-        const handleMouseMove = (e: MouseEvent) => {
-          const x = e.pageX - container.offsetLeft;
-          const walk = (x - startX) * 2;
-          container.scrollLeft = scrollLeft - walk;
-        };
-
-        const handleMouseUp = () => {
-          document.removeEventListener("mousemove", handleMouseMove);
-          document.removeEventListener("mouseup", handleMouseUp);
-          container.style.cursor = "grab";
-        };
-
-        document.addEventListener("mousemove", handleMouseMove);
-        document.addEventListener("mouseup", handleMouseUp);
-        container.style.cursor = "grabbing";
-      }}
-      style={{ cursor: "grab" }}
-    >
+    <div className="relative bg-[#E9E1D8]">
       <div className="container mx-auto px-4 pb-4 pt-2">
-        <div className="flex gap-5 overflow-x-auto scrollbar-hide py-2">
+        <style>
+          {`
+            /* Custom scrollbar for HeaderIconBar - SIMPLIFIED without button or percentage */
+            @media (max-width: 1024px) {
+              .header-icon-bar-scroll::-webkit-scrollbar {
+                display: none !important; /* Hide scrollbar completely */
+              }
+              
+              /* For Firefox */
+              .header-icon-bar-scroll {
+                scrollbar-width: none !important; /* Hide scrollbar */
+              }
+            }
+            
+            /* Desktop scrollbar (optional) */
+            @media (min-width: 1025px) {
+              .header-icon-bar-scroll::-webkit-scrollbar {
+                width: 6px;
+                height: 6px;
+              }
+              .header-icon-bar-scroll::-webkit-scrollbar-track {
+                background: rgba(255, 255, 255, 0.2);
+                border-radius: 3px;
+              }
+              .header-icon-bar-scroll::-webkit-scrollbar-thumb {
+                background: rgba(255, 255, 255, 0.6);
+                border-radius: 3px;
+              }
+            }
+          `}
+        </style>
+
+        <div 
+          ref={containerRef}
+          className="flex gap-5 overflow-x-auto header-icon-bar-scroll py-2"
+          onMouseDown={(e) => {
+            const container = containerRef.current;
+            if (!container) return;
+
+            const startX = e.pageX - container.offsetLeft;
+            const scrollLeft = container.scrollLeft;
+
+            const handleMouseMove = (e: MouseEvent) => {
+              const x = e.pageX - container.offsetLeft;
+              const walk = (x - startX) * 2;
+              container.scrollLeft = scrollLeft - walk;
+            };
+
+            const handleMouseUp = () => {
+              document.removeEventListener("mousemove", handleMouseMove);
+              document.removeEventListener("mouseup", handleMouseUp);
+              container.style.cursor = "grab";
+            };
+
+            document.addEventListener("mousemove", handleMouseMove);
+            document.addEventListener("mouseup", handleMouseUp);
+            container.style.cursor = "grabbing";
+          }}
+          style={{ cursor: "grab" }}
+        >
           {icons.map((icon) => {
             const processedImageUrl = convertDriveUrl(icon.image_url);
             
@@ -534,7 +702,7 @@ const HeaderIconBar = ({ onIconClick }: HeaderIconBarProps) => {
                       className="text-[9px] text-white px-1.5 py-0.5 rounded-full font-bold shadow-sm"
                       style={{
                         backgroundColor:
-                          icon.badge_color || "#D4A574",
+                          icon.badge_color || "#ff3b30",
                       }}
                     >
                       {formatBadgeText(icon.badge_text)}
@@ -542,13 +710,13 @@ const HeaderIconBar = ({ onIconClick }: HeaderIconBarProps) => {
                   </div>
                 )}
 
-                {/* Image Container */}
+                {/* Image Container - ORIGINAL SIZE */}
                 <div
                   className={`w-16 h-16 rounded-full overflow-hidden mb-2 flex-shrink-0 relative
                   ${
                     isSelected(icon.id)
-                      ? "ring-2 ring-amber-600 ring-offset-2 ring-offset-[#E9E1D8]"
-                      : "hover:ring-2 hover:ring-amber-500 hover:ring-offset-2 hover:ring-offset-[#E9E1D8]"
+                      ? "ring-2 ring-gray-600 ring-offset-2 ring-offset-[#E9E1D8]"
+                      : "hover:ring-2 hover:ring-gray-400 hover:ring-offset-2 hover:ring-offset-[#E9E1D8]"
                   }`}
                 >
                   <div className="w-full h-full overflow-hidden relative">
@@ -570,14 +738,14 @@ const HeaderIconBar = ({ onIconClick }: HeaderIconBarProps) => {
                   <div className="absolute bottom-0 left-0 right-0 h-4 bg-gradient-to-t from-black/20 to-transparent pointer-events-none" />
                 </div>
 
-                {/* Text */}
+                {/* Text - ORIGINAL SIZE */}
                 <div className="min-h-[40px] flex items-center justify-center">
                   <span
                     className={`text-xs font-bold transition-colors text-center break-words line-clamp-2
                     ${
                       isSelected(icon.id)
-                        ? "text-amber-800"
-                        : "text-gray-800"
+                        ? "text-gray-700"
+                        : "text-gray-900"
                     }`}
                     style={{
                       wordWrap: 'break-word',
@@ -594,9 +762,9 @@ const HeaderIconBar = ({ onIconClick }: HeaderIconBarProps) => {
                   {icon.title}
                 </div>
 
-                {/* Selected Indicator */}
+                {/* Selected Indicator - ORIGINAL SIZE */}
                 {isSelected(icon.id) && (
-                  <div className="mt-1 w-8 h-0.5 bg-amber-600 rounded-full" />
+                  <div className="mt-1 w-8 h-0.5 bg-gray-600 rounded-full" />
                 )}
               </button>
             );
@@ -705,13 +873,13 @@ const Header = ({ activeCategory }: HeaderProps) => {
   const navClass = (cat?: string, isSale = false) => {
     if (isSale) {
       return params.get("sale") === "true"
-        ? "text-orange-600 font-bold border-b-2 border-orange-600"
-        : "text-orange-500 hover:text-orange-600";
+        ? "text-orange-500 font-bold border-b-2 border-orange-500"
+        : "text-gray-800 hover:text-orange-500";
     }
 
     return cat && normalize(cat) === normalize(currentCategory)
-      ? "text-gray-800 font-bold border-b-2 border-gray-800"
-      : "text-gray-700 hover:text-gray-800";
+      ? "text-gray-900 font-bold border-b-2 border-gray-900"
+      : "text-gray-800 hover:text-gray-900";
   };
 
   /* ================= CLOSE ON OUTSIDE CLICK ================= */
@@ -763,7 +931,7 @@ const Header = ({ activeCategory }: HeaderProps) => {
     setSearchResults([]);
   };
 
-  /* ================= INTELLIGENT SEARCH FETCHING ================= */
+  /* ================= INTELLIGENT SEARCH FETCHING - UPDATED ================= */
   useEffect(() => {
     if (debouncedSearch.current) {
       clearTimeout(debouncedSearch.current);
@@ -771,10 +939,116 @@ const Header = ({ activeCategory }: HeaderProps) => {
 
     if (searchValue.trim().length >= 2) {
       setIsLoadingResults(true);
-      
+
       debouncedSearch.current = setTimeout(async () => {
+        const term = normalize(searchValue);
         const results = await fetchIntelligentSearchResults(searchValue);
-        setSearchResults(results);
+
+        // Apply strict gender filtering for gender-specific searches
+        const womenTerms = ['women', 'womens', 'woman', 'female', 'ladies', 'women\'s', 'girl', 'girls'];
+        const menTerms = ['men', 'mens', 'man', 'male', 'gentlemen', 'men\'s', 'boy', 'boys'];
+        
+        let filteredResults = results;
+        
+        if (menTerms.includes(term)) {
+          // Filter for men's products only - EXTRA STRICT FILTERING
+          filteredResults = results.filter(product => {
+            const productGender = normalize(product.gender || '');
+            const productName = normalize(product.name || '');
+            const productCategory = normalize(product.category || '');
+            const productSubcategory = normalize(product.subcategory || '');
+            
+            // Product must be for men
+            const isForMen = 
+              productGender.includes('men') ||
+              productGender.includes('male') ||
+              productGender.includes('gentlemen') ||
+              productName.includes('men') ||
+              productName.includes('male') ||
+              productName.includes('gentlemen') ||
+              productCategory.includes('men') ||
+              productCategory.includes('male') ||
+              productCategory.includes('gentlemen') ||
+              productSubcategory.includes('men') ||
+              productSubcategory.includes('male') ||
+              productSubcategory.includes('gentlemen');
+            
+            // Product must NOT be for women
+            const isForWomen = 
+              productGender.includes('women') ||
+              productGender.includes('female') ||
+              productGender.includes('ladies') ||
+              productGender.includes('girl') ||
+              productName.includes('women') ||
+              productName.includes('female') ||
+              productName.includes('ladies') ||
+              productName.includes('girl') ||
+              productCategory.includes('women') ||
+              productCategory.includes('female') ||
+              productCategory.includes('ladies') ||
+              productCategory.includes('girl') ||
+              productSubcategory.includes('women') ||
+              productSubcategory.includes('female') ||
+              productSubcategory.includes('ladies') ||
+              productSubcategory.includes('girl');
+            
+            return isForMen && !isForWomen;
+          });
+        } else if (womenTerms.includes(term)) {
+          // Filter for women's products only - EXTRA STRICT FILTERING
+          filteredResults = results.filter(product => {
+            const productGender = normalize(product.gender || '');
+            const productName = normalize(product.name || '');
+            const productCategory = normalize(product.category || '');
+            const productSubcategory = normalize(product.subcategory || '');
+            
+            // Product must be for women
+            const isForWomen = 
+              productGender.includes('women') ||
+              productGender.includes('female') ||
+              productGender.includes('ladies') ||
+              productGender.includes('girl') ||
+              productName.includes('women') ||
+              productName.includes('female') ||
+              productName.includes('ladies') ||
+              productName.includes('girl') ||
+              productCategory.includes('women') ||
+              productCategory.includes('female') ||
+              productCategory.includes('ladies') ||
+              productCategory.includes('girl') ||
+              productSubcategory.includes('women') ||
+              productSubcategory.includes('female') ||
+              productSubcategory.includes('ladies') ||
+              productSubcategory.includes('girl');
+            
+            // Product must NOT be for men
+            const isForMen = 
+              productGender.includes('men') ||
+              productGender.includes('male') ||
+              productGender.includes('gentlemen') ||
+              productName.includes('men') ||
+              productName.includes('male') ||
+              productName.includes('gentlemen') ||
+              productCategory.includes('men') ||
+              productCategory.includes('male') ||
+              productCategory.includes('gentlemen') ||
+              productSubcategory.includes('men') ||
+              productSubcategory.includes('male') ||
+              productSubcategory.includes('gentlemen');
+            
+            return isForWomen && !isForMen;
+          });
+        } else {
+          // For non-gender-specific searches, sort by relevance
+          const variations = getAllSearchVariations(searchValue);
+          filteredResults = results.sort((a, b) =>
+            calculateRelevanceScore(b, variations) -
+            calculateRelevanceScore(a, variations)
+          );
+        }
+
+        console.log(`Filtered results: ${filteredResults.length} products`);
+        setSearchResults(filteredResults);
         setIsLoadingResults(false);
         setShowSuggestions(true);
       }, 300);
@@ -784,9 +1058,7 @@ const Header = ({ activeCategory }: HeaderProps) => {
     }
 
     return () => {
-      if (debouncedSearch.current) {
-        clearTimeout(debouncedSearch.current);
-      }
+      if (debouncedSearch.current) clearTimeout(debouncedSearch.current);
     };
   }, [searchValue]);
 
@@ -877,13 +1149,43 @@ const Header = ({ activeCategory }: HeaderProps) => {
       <div className={`fixed top-0 left-0 right-0 z-50 transition-transform duration-300 ${
         isHeaderVisible ? 'translate-y-0' : '-translate-y-full'
       }`}>
-        <header className="w-full bg-[#E9E1D8] backdrop-blur supports-[backdrop-filter]:bg-[#E9E1D8]/95 shadow-lg safe-top border-b border-[#D4C9BC]">
+        <style>
+          {`
+            /* Custom scrollbar for mobile - SIMPLIFIED without buttons */
+            @media (max-width: 1024px) {
+              .mobile-scroll::-webkit-scrollbar {
+                width: 100%;
+                height: 4px;
+                background: rgba(255, 255, 255, 0.3);
+                border-radius: 2px;
+                position: relative;
+              }
+              
+              .mobile-scroll::-webkit-scrollbar-track {
+                background: rgba(255, 255, 255, 0.1);
+                border-radius: 2px;
+              }
+              
+              .mobile-scroll::-webkit-scrollbar-thumb {
+                background: white;
+                border-radius: 2px;
+                box-shadow: 0 0 6px rgba(0, 0, 0, 0.3);
+                border: 1px solid rgba(0, 0, 0, 0.1);
+              }
+              
+              .mobile-scroll::-webkit-scrollbar-thumb:hover {
+                background: #f8f8f8;
+              }
+            }
+          `}
+        </style>
+        <header className="w-full bg-[#E9E1D8] backdrop-blur supports-[backdrop-filter]:bg-[#E9E1D8]/95 shadow-lg safe-top">
           <div className="container mx-auto px-3 sm:px-4">
             <div className="flex items-center justify-between py-3 gap-2">
               {/* MOBILE MENU BUTTON */}
               <button
                 onClick={() => setIsMenuOpen(true)}
-                className="lg:hidden p-1.5 sm:p-2 hover:bg-[#D4C9BC] rounded-md transition-colors relative group flex-shrink-0"
+                className="lg:hidden p-1.5 sm:p-2 hover:bg-white/30 rounded-md transition-colors relative group flex-shrink-0"
                 aria-label="Open menu"
               >
                 <Menu size={20} className="text-gray-800 sm:w-6 sm:h-6 w-5 h-5" />
@@ -902,10 +1204,10 @@ const Header = ({ activeCategory }: HeaderProps) => {
                   <h1 className="text-lg sm:text-xl md:text-3xl font-bold text-gray-800">Loading...</h1>
                 ) : (
                   <h1 className="text-lg sm:text-xl md:text-3xl font-bold whitespace-nowrap">
-                    <span style={{ color: settings.first_name_color || "#6B6254" }}>
+                    <span style={{ color: settings.first_name_color || "#1e293b" }}>
                       {nameParts.firstPart}
                     </span>
-                    <span style={{ color: settings.second_name_color || "#D4A574" }}>
+                    <span style={{ color: settings.second_name_color || "#f59e0b" }}>
                       {nameParts.secondPart}
                     </span>
                   </h1>
@@ -952,7 +1254,7 @@ const Header = ({ activeCategory }: HeaderProps) => {
 
               {/* ENHANCED DESKTOP SEARCH LIKE FLIPKART */}
               <div ref={searchRef} className="relative hidden lg:flex items-center mx-4 xl:mx-6">
-                <div className="flex items-center h-9 w-60 xl:w-80 2xl:w-96 rounded-md bg-white px-4 border border-[#D4C9BC] shadow-sm">
+                <div className="flex items-center h-9 w-60 xl:w-80 2xl:w-96 rounded-md bg-white/90 backdrop-blur-sm px-4 border border-gray-300">
                   <button 
                     onClick={() => handleSearch()}
                     className="hover:opacity-70 transition-opacity relative group"
@@ -964,7 +1266,7 @@ const Header = ({ activeCategory }: HeaderProps) => {
                     </div>
                   </button>
 
-                  <span className="mx-2 h-5 w-px bg-[#D4C9BC]" />
+                  <span className="mx-2 h-5 w-px bg-gray-400" />
 
                   <input
                     type="text"
@@ -975,14 +1277,14 @@ const Header = ({ activeCategory }: HeaderProps) => {
                     onKeyDown={(e) => e.key === "Enter" && handleSearch()}
                     onFocus={() => setShowSuggestions(true)}
                     placeholder="Search For Products and More"
-                    className="flex-1 bg-transparent text-sm focus:outline-none placeholder:text-gray-500 text-gray-800 font-medium"
+                    className="flex-1 bg-transparent text-sm focus:outline-none placeholder:text-gray-600 text-gray-900 font-medium"
                     aria-label="Search products"
                   />
                 </div>
 
                 {/* FLIPKART-STYLE SEARCH SUGGESTIONS */}
                 {showSuggestions && (
-                  <div className="absolute top-11 left-0 w-full bg-white border border-gray-200 rounded-md shadow-lg z-[9999] max-h-96 overflow-y-auto">
+                  <div className="absolute top-11 left-0 w-full bg-white border border-gray-200 rounded-md shadow-lg z-[9999] max-h-96 overflow-y-auto mobile-scroll">
                     {isLoadingResults ? (
                       <div className="p-4 text-center">
                         <p className="text-gray-600">Searching products...</p>
@@ -991,7 +1293,7 @@ const Header = ({ activeCategory }: HeaderProps) => {
                       <div className="divide-y divide-gray-100">
                         {/* Search Results Section */}
                         {searchResults.length > 0 && (
-                          <div className="p-3 bg-amber-50">
+                          <div className="p-3 bg-gray-50">
                             <p className="text-xs text-gray-600 mb-2 font-semibold">
                               Products matching "{searchValue}" ({searchResults.length})
                             </p>
@@ -1015,14 +1317,14 @@ const Header = ({ activeCategory }: HeaderProps) => {
                                     {product.name}
                                   </p>
                                   <div className="flex items-center gap-2">
-                                    <span className="text-xs text-amber-600 font-medium">
+                                    <span className="text-xs text-gray-600 font-medium">
                                       {product.category}
                                     </span>
-                                    {product.subcategory && (
+                                    {product.gender && (
                                       <>
                                         <span className="text-gray-400">•</span>
-                                        <span className="text-xs text-gray-500">
-                                          {product.subcategory}
+                                        <span className="text-xs text-gray-500 capitalize">
+                                          {product.gender}
                                         </span>
                                       </>
                                     )}
@@ -1043,6 +1345,7 @@ const Header = ({ activeCategory }: HeaderProps) => {
                                     )}
                                   </div>
                                 </div>
+                                <ChevronRight size={16} className="text-gray-400 flex-shrink-0" />
                               </button>
                             ))}
                           </div>
@@ -1059,7 +1362,7 @@ const Header = ({ activeCategory }: HeaderProps) => {
                                 <button
                                   key={category}
                                   onClick={() => handleCategoryClick(category)}
-                                  className="px-3 py-1.5 text-xs bg-[#E9E1D8] hover:bg-amber-100 text-gray-700 hover:text-amber-700 rounded-full transition-colors border border-[#D4C9BC]"
+                                  className="px-3 py-1.5 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 hover:text-gray-900 rounded-full transition-colors border border-gray-200"
                                 >
                                   {category}
                                 </button>
@@ -1071,14 +1374,14 @@ const Header = ({ activeCategory }: HeaderProps) => {
                         {/* Trending Searches Section */}
                         <div className="p-3">
                           <p className="text-xs text-gray-600 mb-2 font-semibold flex items-center gap-1">
-                            <TrendingUp size={14} className="text-amber-600" /> Trending Searches
+                            <TrendingUp size={14} className="text-gray-600" /> Trending Searches
                           </p>
                           <div className="space-y-1">
                             {TRENDING_SEARCHES.map((item) => (
                               <button
                                 key={item}
                                 onClick={() => handleSearch(item, true)}
-                                className="block w-full text-left text-sm py-1.5 px-1 text-gray-700 hover:text-amber-600 hover:bg-amber-50 rounded transition-colors"
+                                className="block w-full text-left text-sm py-1.5 px-1 text-gray-700 hover:text-gray-900 hover:bg-gray-50 rounded transition-colors"
                               >
                                 {item}
                               </button>
@@ -1089,15 +1392,15 @@ const Header = ({ activeCategory }: HeaderProps) => {
                     ) : (
                       /* Default Suggestions when no search */
                       <div className="p-3">
-                        <p className="text-xs text-gray-600 mb-2 font-semibold flex items-center gap-1">
-                          <TrendingUp size={14} className="text-amber-600" /> Start typing to search products
+                        <p className="text-xs text-gray-600 mb-2 font-semi-bold flex items-center gap-1">
+                          <TrendingUp size={14} className="text-gray-600" /> Start typing to search products
                         </p>
                         <div className="space-y-1">
                           {popularCategories.slice(0, 5).map((category) => (
                             <button
                               key={category}
                               onClick={() => handleCategoryClick(category)}
-                              className="block w-full text-left text-sm py-1.5 px-1 text-gray-700 hover:text-amber-600 hover:bg-amber-50 rounded transition-colors"
+                              className="block w-full text-left text-sm py-1.5 px-1 text-gray-700 hover:text-gray-900 hover:bg-gray-50 rounded transition-colors"
                             >
                               Browse {category} products
                             </button>
@@ -1111,7 +1414,7 @@ const Header = ({ activeCategory }: HeaderProps) => {
                       <div className="p-3 border-t border-gray-200 bg-gray-50">
                         <button
                           onClick={() => handleSearch()}
-                          className="w-full py-2.5 bg-amber-600 text-white font-medium rounded hover:bg-amber-700 transition-colors text-sm flex items-center justify-center gap-2"
+                          className="w-full py-2.5 bg-gray-800 text-white font-medium rounded hover:bg-gray-900 transition-colors text-sm flex items-center justify-center gap-2"
                         >
                           <Search size={16} />
                           View All Results for "{searchValue}"
@@ -1127,7 +1430,7 @@ const Header = ({ activeCategory }: HeaderProps) => {
                 {isAdmin && (
                   <Link 
                     to="/admin" 
-                    className="hidden lg:flex p-1.5 sm:p-2 hover:bg-[#D4C9BC] rounded-md transition-colors relative group flex-shrink-0"
+                    className="hidden lg:flex p-1.5 sm:p-2 hover:bg-white/30 rounded-md transition-colors relative group flex-shrink-0"
                     aria-label="Admin dashboard"
                   >
                     <Shield size={18} className="text-gray-800 sm:w-5 sm:h-5 w-4 h-4" />
@@ -1139,7 +1442,7 @@ const Header = ({ activeCategory }: HeaderProps) => {
 
                 <button
                   onClick={() => setIsSearchOpen(true)}
-                  className="p-1.5 sm:p-2 lg:hidden hover:bg-[#D4C9BC] rounded-md transition-colors relative group flex-shrink-0"
+                  className="p-1.5 sm:p-2 lg:hidden hover:bg-white/30 rounded-md transition-colors relative group flex-shrink-0"
                   aria-label="Search"
                 >
                   <Search size={18} className="text-gray-800 sm:w-5 sm:h-5 w-4 h-4" />
@@ -1151,12 +1454,12 @@ const Header = ({ activeCategory }: HeaderProps) => {
                 {/* Wishlist Icon - Visible on both mobile and desktop */}
                 <Link 
                   to="/wishlist" 
-                  className="relative p-1.5 sm:p-2 hover:bg-[#D4C9BC] rounded-md transition-colors group flex-shrink-0"
+                  className="relative p-1.5 sm:p-2 hover:bg-white/30 rounded-md transition-colors group flex-shrink-0"
                   aria-label="Wishlist"
                 >
                   <Heart size={18} className="text-gray-800 sm:w-5 sm:h-5 w-4 h-4" />
                   {wishlistItems.length > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 sm:-top-1 sm:-right-1 bg-orange-400 text-gray-800 text-xs rounded-full w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center font-bold">
+                    <span className="absolute -top-0.5 -right-0.5 sm:-top-1 sm:-right-1 bg-orange-400 text-gray-900 text-xs rounded-full w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center font-bold">
                       {wishlistItems.length}
                     </span>
                   )}
@@ -1168,8 +1471,8 @@ const Header = ({ activeCategory }: HeaderProps) => {
                 {/* Account Icons - UPDATED: Profile icon visible on desktop only */}
                 <AccountIcons
                   iconColor="text-gray-800"
-                  showProfile={true}
-                  showOrders={true}
+                  showProfile={true} // Profile icon shown (but only on desktop due to CSS in AccountIcons)
+                  showOrders={true} // Orders icon shown (but only on desktop due to CSS in AccountIcons)
                   onOpenProfile={() => {
                     if (!isAuthenticated) {
                       setAuthMode("login");
@@ -1191,12 +1494,12 @@ const Header = ({ activeCategory }: HeaderProps) => {
                 {/* Cart Icon - Visible on both mobile and desktop */}
                 <button
                   onClick={() => setIsCartOpen(true)}
-                  className="relative p-1.5 sm:p-2 hover:bg-[#D4C9BC] rounded-md transition-colors group flex-shrink-0"
+                  className="relative p-1.5 sm:p-2 hover:bg-white/30 rounded-md transition-colors group flex-shrink-0"
                   aria-label="Cart"
                 >
                   <ShoppingBag size={18} className="text-gray-800 sm:w-5 sm:h-5 w-4 h-4" />
                   {totalItems > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 sm:-top-1 sm:-right-1 w-4 h-4 sm:w-5 sm:h-5 bg-orange-400 text-xs rounded-full flex items-center justify-center text-gray-800 font-bold">
+                    <span className="absolute -top-0.5 -right-0.5 sm:-top-1 sm:-right-1 w-4 h-4 sm:w-5 sm:h-5 bg-orange-400 text-xs rounded-full flex items-center justify-center text-gray-900 font-bold">
                       {totalItems}
                     </span>
                   )}
@@ -1208,34 +1511,111 @@ const Header = ({ activeCategory }: HeaderProps) => {
             </div>
           </div>
 
-          {/* MOBILE SEARCH */}
+          {/* FLIPKART-STYLE MOBILE SEARCH - Merged with header */}
           {isSearchOpen && (
-            <div className="lg:hidden border-t border-[#D4C9BC] bg-[#E9E1D8] px-4 py-3">
+            <div className="lg:hidden border-t border-gray-300 bg-[#E9E1D8] px-3 py-2">
               <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={searchValue}
-                  onChange={(e) => setSearchValue(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                  placeholder="Search products..."
-                  className="flex-1 h-11 px-3 border border-[#D4C9BC] bg-white text-gray-800 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent font-medium"
-                  aria-label="Search products"
-                />
-
-                <button
-                  onClick={() => handleSearch()}
-                  className="h-11 px-4 bg-orange-400 text-gray-800 font-medium rounded-md hover:bg-orange-300 transition-colors"
-                  aria-label="Submit search"
-                >
-                  Search
-                </button>
-
+                <div className="flex-1 relative">
+                  <div className="flex items-center h-12 bg-white rounded-lg px-4 border border-gray-300 shadow-sm">
+                    <Search size={18} className="text-gray-600 flex-shrink-0" />
+                    <input
+                      type="text"
+                      value={searchValue}
+                      onChange={(e) => setSearchValue(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                      placeholder="Search for products, brands and more"
+                      className="flex-1 h-full px-3 bg-transparent text-gray-900 focus:outline-none text-sm font-medium placeholder:text-gray-500"
+                      aria-label="Search products"
+                      autoFocus
+                    />
+                    {searchValue && (
+                      <button
+                        onClick={() => setSearchValue("")}
+                        className="p-1 hover:bg-gray-100 rounded-full"
+                        aria-label="Clear search"
+                      >
+                        <X size={16} className="text-gray-500" />
+                      </button>
+                    )}
+                  </div>
+                  
+                  {/* Mobile Search Suggestions */}
+                  {showSuggestions && (searchValue.trim().length >= 2 || searchResults.length > 0) && (
+                    <div className="absolute top-14 left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg z-[9999] max-h-80 overflow-y-auto mobile-scroll">
+                      {isLoadingResults ? (
+                        <div className="p-4 text-center">
+                          <p className="text-gray-600">Searching...</p>
+                        </div>
+                      ) : searchResults.length > 0 ? (
+                        <div className="divide-y divide-gray-100">
+                          {searchResults.slice(0, 5).map((product) => (
+                            <button
+                              key={product.id}
+                              onClick={() => handleProductClick(product.id)}
+                              className="flex items-center gap-3 w-full text-left p-3 hover:bg-gray-50 transition-colors"
+                            >
+                              {product.images && product.images.length > 0 && (
+                                <div className="w-10 h-10 flex-shrink-0 rounded overflow-hidden border border-gray-200">
+                                  <img 
+                                    src={product.images[0]} 
+                                    alt={product.name}
+                                    className="w-full h-full object-cover"
+                                  />
+                                </div>
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-gray-900 truncate">
+                                  {product.name}
+                                </p>
+                                <div className="flex items-center gap-1">
+                                  <span className="text-xs text-gray-600 font-medium">
+                                    {product.category}
+                                  </span>
+                                  {product.gender && (
+                                    <>
+                                      <span className="text-gray-400">•</span>
+                                      <span className="text-xs text-gray-500 capitalize">
+                                        {product.gender}
+                                      </span>
+                                    </>
+                                  )}
+                                </div>
+                                <p className="text-sm font-bold text-gray-900 mt-0.5">
+                                  ₹{product.price}
+                                </p>
+                              </div>
+                              <ChevronRight size={16} className="text-gray-400 flex-shrink-0" />
+                            </button>
+                          ))}
+                          
+                          <button
+                            onClick={() => handleSearch()}
+                            className="w-full p-3 text-center bg-gray-50 text-gray-800 font-medium hover:bg-gray-100 transition-colors text-sm border-t border-gray-200"
+                          >
+                            View all results for "{searchValue}"
+                          </button>
+                        </div>
+                      ) : searchValue.trim().length >= 2 ? (
+                        <div className="p-4 text-center">
+                          <p className="text-gray-600 mb-2">No products found for "{searchValue}"</p>
+                          <button
+                            onClick={() => handleSearch()}
+                            className="text-gray-800 font-medium text-sm"
+                          >
+                            Try different keywords
+                          </button>
+                        </div>
+                      ) : null}
+                    </div>
+                  )}
+                </div>
+                
                 <button
                   onClick={() => setIsSearchOpen(false)}
-                  className="p-2 hover:bg-[#D4C9BC] rounded-md transition-colors"
-                  aria-label="Close search"
+                  className="h-12 px-4 bg-white text-gray-800 font-medium rounded-lg hover:bg-gray-50 transition-colors border border-gray-300 whitespace-nowrap"
+                  aria-label="Cancel"
                 >
-                  <X size={20} className="text-gray-800" />
+                  Cancel
                 </button>
               </div>
             </div>
@@ -1265,7 +1645,7 @@ const Header = ({ activeCategory }: HeaderProps) => {
           
           <div 
             ref={mobileMenuRef}
-            className="fixed inset-y-0 left-0 w-72 bg-white shadow-lg overflow-y-auto"
+            className="fixed inset-y-0 left-0 w-72 bg-white shadow-lg overflow-y-auto mobile-scroll"
           >
             <div className="flex flex-col h-full">
               <div className="flex items-center justify-between p-4 border-b border-gray-200">
@@ -1281,7 +1661,7 @@ const Header = ({ activeCategory }: HeaderProps) => {
 
               <div className="p-4 border-b border-gray-200">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-[#E9E1D8] rounded-full flex items-center justify-center">
+                  <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
                     <User size={20} className="text-gray-600" />
                   </div>
                   <div>
@@ -1319,7 +1699,7 @@ const Header = ({ activeCategory }: HeaderProps) => {
                   <button
                     key={index}
                     onClick={item.onClick}
-                    className="flex items-center w-full p-3 text-left hover:bg-[#E9E1D8] rounded-lg transition-colors text-gray-700 hover:text-gray-900"
+                    className="flex items-center w-full p-3 text-left hover:bg-gray-100 rounded-lg transition-colors text-gray-700 hover:text-gray-900"
                   >
                     {item.icon && <span className="mr-3">{item.icon}</span>}
                     <span className="font-medium">{item.label}</span>
@@ -1331,7 +1711,7 @@ const Header = ({ activeCategory }: HeaderProps) => {
                 {isAdmin && (
                   <Link
                     to="/admin"
-                    className="flex items-center p-3 text-left hover:bg-[#E9E1D8] rounded-lg transition-colors text-gray-700 hover:text-gray-900"
+                    className="flex items-center p-3 text-left hover:bg-gray-100 rounded-lg transition-colors text-gray-700 hover:text-gray-900"
                     onClick={() => setIsMenuOpen(false)}
                   >
                     <Shield size={18} className="mr-3 text-gray-600" />
@@ -1344,7 +1724,7 @@ const Header = ({ activeCategory }: HeaderProps) => {
                     navigate("/account/orders");
                     setIsMenuOpen(false);
                   }}
-                  className="flex items-center w-full p-3 text-left hover:bg-[#E9E1D8] rounded-lg transition-colors text-gray-700 hover:text-gray-900"
+                  className="flex items-center w-full p-3 text-left hover:bg-gray-100 rounded-lg transition-colors text-gray-700 hover:text-gray-900"
                 >
                   <Package size={18} className="mr-3 text-gray-600" />
                   <span className="font-medium">My Orders</span>

@@ -1,5 +1,5 @@
 import { Home, ShoppingCart, Package, User } from "lucide-react";
-import { NavLink, useLocation, useNavigate } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
 import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEffect, useState } from "react";
@@ -8,35 +8,32 @@ type Tab = "home" | "cart" | "orders" | "profile";
 
 const BottomNavigation = () => {
   const location = useLocation();
-  const navigate = useNavigate();
-
   const { items, setIsCartOpen, isCartOpen } = useCart();
-  const {
-    user,
-    isAuthenticated,
-    setIsAuthModalOpen,
-    setAuthMode,
+  const { 
+    isAuthenticated, 
+    setIsAuthModalOpen, 
+    setAuthMode, 
     setIsAccountDrawerOpen,
+    isAccountDrawerOpen 
   } = useAuth();
-
-  const [activeTab, setActiveTab] = useState<Tab>("home");
-  const [hoveredTab, setHoveredTab] = useState<Tab | null>(null);
-  const [isHovering, setIsHovering] = useState(false);
 
   const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
 
   // 🚫 Hide bottom nav on admin pages
   if (location.pathname.startsWith("/admin")) return null;
 
-  const openLogin = () => {
-    setAuthMode("login");
-    setIsAuthModalOpen(true);
-  };
+  // State to track active tab
+  const [activeTab, setActiveTab] = useState<Tab>("home");
 
-  // 🔁 Sync active tab with route + drawers
+  // Determine active tab based on route and drawer state
   useEffect(() => {
     if (isCartOpen) {
       setActiveTab("cart");
+      return;
+    }
+
+    if (isAccountDrawerOpen) {
+      setActiveTab("profile");
       return;
     }
 
@@ -46,293 +43,187 @@ const BottomNavigation = () => {
       setActiveTab("orders");
     } else if (location.pathname.startsWith("/account")) {
       setActiveTab("profile");
+    } else {
+      setActiveTab("home");
     }
-  }, [location.pathname, isCartOpen]);
+  }, [location.pathname, isCartOpen, isAccountDrawerOpen]);
 
-  // Get icon animation class
-  const getIconAnimation = (tab: Tab) => {
-    if (activeTab === tab) {
-      return "animate-bounce-once";
-    }
-    if (hoveredTab === tab && isHovering) {
-      return "animate-pulse";
-    }
-    return "";
+  const openLogin = () => {
+    setAuthMode("login");
+    setIsAuthModalOpen(true);
   };
 
-  // Get text animation class
-  const getTextAnimation = (tab: Tab) => {
-    if (activeTab === tab) {
-      return "animate-text-pop";
+  const handleProfileClick = () => {
+    setIsCartOpen(false);
+    if (!isAuthenticated) {
+      openLogin();
+    } else {
+      setIsAccountDrawerOpen(true);
     }
-    if (hoveredTab === tab && isHovering) {
-      return "animate-text-pop";
-    }
-    return "";
-  };
-
-  // Handle tab hover with proper state management
-  const handleTabHover = (tab: Tab) => {
-    setHoveredTab(tab);
-    setIsHovering(true);
-  };
-
-  // Clear all hover states
-  const clearHoverStates = () => {
-    setIsHovering(false);
-    setHoveredTab(null);
-  };
-
-  // Handle nav container mouse leave
-  const handleNavMouseLeave = () => {
-    clearHoverStates();
-  };
-
-  // Handle individual tab mouse leave
-  const handleTabMouseLeave = () => {
-    // Only clear if no other tab is being hovered
-    if (!isHovering) {
-      clearHoverStates();
-    }
+    setActiveTab("profile");
   };
 
   return (
-    <nav 
-      className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-sky-200 shadow-lg md:hidden"
-      onMouseLeave={handleNavMouseLeave}
-    >
-      <div className="flex items-center justify-around h-16">
+    <div className="fixed bottom-2 left-0 right-0 z-50 flex justify-center md:hidden">
+      {/* Floating circular navigation container with INCREASED WIDTH and CLOSER TO BOTTOM */}
+      <nav className="flex items-center justify-between bg-gradient-to-b from-[#2A2D35] to-[#1A1C20] border border-white/10 px-8 py-4 rounded-full shadow-2xl w-full max-w-[500px] h-[80px] backdrop-blur-md mx-4">
+        
         {/* HOME */}
         <NavLink
           to="/"
-          onClick={() => {
-            setIsCartOpen(false);
+          onClick={() => { 
+            setIsCartOpen(false); 
             setIsAccountDrawerOpen(false);
             setActiveTab("home");
-            clearHoverStates();
           }}
-          onMouseEnter={() => handleTabHover("home")}
-          onMouseLeave={handleTabMouseLeave}
-          className={({ isActive }) => 
-            `flex flex-col items-center justify-center gap-1 text-xs transition-all duration-300 group ${
-              isActive || activeTab === "home"
-                ? "text-sky-600 font-semibold"
-                : "text-gray-600 hover:text-sky-500"
-            }`
-          }
+          className="relative flex flex-1 items-center justify-center h-full group"
         >
-          <div className="relative p-2 rounded-lg group-hover:bg-sky-50/80 transition-all duration-300">
-            <Home 
-              size={20} 
-              className={`transition-all duration-300 ${getIconAnimation("home")} ${
-                activeTab === "home" ? "scale-110" : ""
-              } ${hoveredTab === "home" && isHovering && activeTab !== "home" ? "scale-105" : ""}`} 
-            />
-            {/* Active indicator - Emoji style dot */}
-            {(activeTab === "home" || location.pathname === "/") && (
-              <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2">
-                <div className="w-1.5 h-1.5 bg-sky-500 rounded-full animate-ping-slow"></div>
-                <div className="w-2 h-2 bg-sky-500 rounded-full mt-0.5"></div>
-              </div>
-            )}
-          </div>
-          <span className={`transition-all duration-300 ${getTextAnimation("home")} ${
-            hoveredTab === "home" && isHovering && activeTab !== "home" ? "font-medium" : ""
+          <div className={`z-10 transition-all duration-300 flex flex-col items-center ${
+            activeTab === "home" ? "text-[#E9E1D8]" : "text-gray-400 group-hover:text-[#E9E1D8]"
           }`}>
-            Home
-          </span>
+            <div className="relative">
+              <Home 
+                size={24} 
+                strokeWidth={activeTab === "home" ? 2.5 : 2} 
+                className={activeTab === "home" ? "animate-bounce-once" : ""}
+              />
+            </div>
+            <span className="text-[11px] mt-2 font-medium">Home</span>
+          </div>
+          
+          {/* Active indicator - ROUNDED circle behind icon */}
+          {activeTab === "home" && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-16 h-16 bg-[#E9E1D8]/10 rounded-full blur-sm"></div>
+            </div>
+          )}
         </NavLink>
 
-        {/* CART — DRAWER */}
+        {/* CART */}
         <button
-          onClick={() => {
-            setIsAccountDrawerOpen(false);
+          onClick={() => { 
+            setIsAccountDrawerOpen(false); 
             setIsCartOpen(true);
             setActiveTab("cart");
-            clearHoverStates();
           }}
-          onMouseEnter={() => handleTabHover("cart")}
-          onMouseLeave={handleTabMouseLeave}
-          className={`flex flex-col items-center justify-center gap-1 text-xs transition-all duration-300 group ${
-            activeTab === "cart"
-              ? "text-sky-600 font-semibold"
-              : "text-gray-600 hover:text-sky-500"
-          }`}
+          className="relative flex flex-1 items-center justify-center h-full group"
         >
-          <div className="relative p-2 rounded-lg group-hover:bg-sky-50/80 transition-all duration-300">
-            <ShoppingCart 
-              size={20} 
-              className={`transition-all duration-300 ${getIconAnimation("cart")} ${
-                activeTab === "cart" ? "scale-110" : ""
-              } ${hoveredTab === "cart" && isHovering && activeTab !== "cart" ? "scale-105" : ""}`} 
-            />
-            {itemCount > 0 && (
-              <span className="absolute -top-1 -right-1 bg-orange-400 text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-bold shadow-sm animate-pulse-slow">
-                {itemCount > 9 ? "9+" : itemCount}
-              </span>
-            )}
-            {/* Active indicator - Emoji style dot */}
-            {activeTab === "cart" && (
-              <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2">
-                <div className="w-1.5 h-1.5 bg-sky-500 rounded-full animate-ping-slow"></div>
-                <div className="w-2 h-2 bg-sky-500 rounded-full mt-0.5"></div>
-              </div>
-            )}
-          </div>
-          <span className={`transition-all duration-300 ${getTextAnimation("cart")} ${
-            hoveredTab === "cart" && isHovering && activeTab !== "cart" ? "font-medium" : ""
+          <div className={`z-10 transition-all duration-300 flex flex-col items-center ${
+            activeTab === "cart" ? "text-[#E9E1D8]" : "text-gray-400 group-hover:text-[#E9E1D8]"
           }`}>
-            Cart
-          </span>
+            <div className="relative">
+              <ShoppingCart 
+                size={24} 
+                strokeWidth={activeTab === "cart" ? 2.5 : 2}
+                className={activeTab === "cart" ? "animate-bounce-once" : ""}
+              />
+              {itemCount > 0 && (
+                <span className="absolute -top-2 -right-2 bg-orange-400 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center shadow-lg animate-pulse-slow">
+                  {itemCount > 9 ? "9+" : itemCount}
+                </span>
+              )}
+            </div>
+            <span className="text-[11px] mt-2 font-medium">Cart</span>
+          </div>
+          
+          {/* Active indicator - ROUNDED circle behind icon */}
+          {activeTab === "cart" && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-16 h-16 bg-[#E9E1D8]/10 rounded-full blur-sm"></div>
+            </div>
+          )}
         </button>
 
         {/* ORDERS */}
         {isAuthenticated ? (
           <NavLink
             to="/account/orders"
-            onClick={() => {
-              setIsCartOpen(false);
+            onClick={() => { 
+              setIsCartOpen(false); 
               setIsAccountDrawerOpen(false);
               setActiveTab("orders");
-              clearHoverStates();
             }}
-            onMouseEnter={() => handleTabHover("orders")}
-            onMouseLeave={handleTabMouseLeave}
-            className={({ isActive }) => 
-              `flex flex-col items-center justify-center gap-1 text-xs transition-all duration-300 group ${
-                isActive || activeTab === "orders"
-                  ? "text-sky-600 font-semibold"
-                  : "text-gray-600 hover:text-sky-500"
-              }`
-            }
+            className={({ isActive }) => `relative flex flex-1 items-center justify-center h-full group ${
+              activeTab === "orders" ? "" : ""
+            }`}
           >
-            <div className="relative p-2 rounded-lg group-hover:bg-sky-50/80 transition-all duration-300">
-              <Package 
-                size={20} 
-                className={`transition-all duration-300 ${getIconAnimation("orders")} ${
-                  activeTab === "orders" ? "scale-110" : ""
-                } ${hoveredTab === "orders" && isHovering && activeTab !== "orders" ? "scale-105" : ""}`} 
-              />
-              {/* Active indicator - Emoji style dot */}
-              {(activeTab === "orders" || location.pathname.startsWith("/account/orders")) && (
-                <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2">
-                  <div className="w-1.5 h-1.5 bg-sky-500 rounded-full animate-ping-slow"></div>
-                  <div className="w-2 h-2 bg-sky-500 rounded-full mt-0.5"></div>
-                </div>
-              )}
-            </div>
-            <span className={`transition-all duration-300 ${getTextAnimation("orders")} ${
-              hoveredTab === "orders" && isHovering && activeTab !== "orders" ? "font-medium" : ""
+            <div className={`z-10 transition-all duration-300 flex flex-col items-center ${
+              activeTab === "orders" ? "text-[#E9E1D8]" : "text-gray-400 group-hover:text-[#E9E1D8]"
             }`}>
-              Orders
-            </span>
+              <Package 
+                size={24} 
+                strokeWidth={activeTab === "orders" ? 2.5 : 2}
+                className={activeTab === "orders" ? "animate-bounce-once" : ""}
+              />
+              <span className="text-[11px] mt-2 font-medium">Orders</span>
+            </div>
+            
+            {/* Active indicator - ROUNDED circle behind icon */}
+            {activeTab === "orders" && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="w-16 h-16 bg-[#E9E1D8]/10 rounded-full blur-sm"></div>
+              </div>
+            )}
           </NavLink>
         ) : (
           <button
             onClick={() => {
               openLogin();
-              clearHoverStates();
             }}
-            onMouseEnter={() => handleTabHover("orders")}
-            onMouseLeave={handleTabMouseLeave}
-            className="flex flex-col items-center justify-center gap-1 text-xs text-gray-600 hover:text-sky-500 transition-all duration-300 group"
+            className="relative flex flex-1 items-center justify-center h-full group"
           >
-            <div className="relative p-2 rounded-lg group-hover:bg-sky-50/80 transition-all duration-300">
-              <Package 
-                size={20} 
-                className={`transition-all duration-300 ${hoveredTab === "orders" && isHovering ? "animate-pulse scale-105" : ""}`} 
-              />
+            <div className="z-10 transition-all duration-300 flex flex-col items-center text-gray-400 group-hover:text-[#E9E1D8]">
+              <Package size={24} />
+              <span className="text-[11px] mt-2 font-medium">Orders</span>
             </div>
-            <span className={`transition-all duration-300 ${hoveredTab === "orders" && isHovering ? "animate-text-pop font-medium" : ""}`}>
-              Orders
-            </span>
           </button>
         )}
 
-        {/* PROFILE — DRAWER */}
+        {/* PROFILE */}
         <button
-          onClick={() => {
-            setIsCartOpen(false);
-            clearHoverStates();
-
-            if (!isAuthenticated) {
-              openLogin();
-            } else {
-              setIsAccountDrawerOpen(true);
-              setActiveTab("profile");
-            }
-          }}
-          onMouseEnter={() => handleTabHover("profile")}
-          onMouseLeave={handleTabMouseLeave}
-          className={`flex flex-col items-center justify-center gap-1 text-xs transition-all duration-300 group ${
-            activeTab === "profile"
-              ? "text-sky-600 font-semibold"
-              : "text-gray-600 hover:text-sky-500"
-          }`}
+          onClick={handleProfileClick}
+          className="relative flex flex-1 items-center justify-center h-full group"
         >
-          <div className="relative p-2 rounded-lg group-hover:bg-sky-50/80 transition-all duration-300">
-            <User 
-              size={20} 
-              className={`transition-all duration-300 ${getIconAnimation("profile")} ${
-                activeTab === "profile" ? "scale-110" : ""
-              } ${hoveredTab === "profile" && isHovering && activeTab !== "profile" ? "scale-105" : ""}`} 
-            />
-            {/* Active indicator - Emoji style dot */}
-            {activeTab === "profile" && (
-              <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2">
-                <div className="w-1.5 h-1.5 bg-sky-500 rounded-full animate-ping-slow"></div>
-                <div className="w-2 h-2 bg-sky-500 rounded-full mt-0.5"></div>
-              </div>
-            )}
-          </div>
-          <span className={`transition-all duration-300 ${getTextAnimation("profile")} ${
-            hoveredTab === "profile" && isHovering && activeTab !== "profile" ? "font-medium" : ""
+          <div className={`z-10 transition-all duration-300 flex flex-col items-center ${
+            activeTab === "profile" ? "text-[#E9E1D8]" : "text-gray-400 group-hover:text-[#E9E1D8]"
           }`}>
-            {isAuthenticated ? "Profile" : "Login"}
-          </span>
+            <User 
+              size={24} 
+              strokeWidth={activeTab === "profile" ? 2.5 : 2}
+              className={activeTab === "profile" ? "animate-bounce-once" : ""}
+            />
+            <span className="text-[11px] mt-2 font-medium">
+              {isAuthenticated ? "Profile" : "Login"}
+            </span>
+          </div>
+          
+          {/* Active indicator - ROUNDED circle behind icon */}
+          {activeTab === "profile" && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-16 h-16 bg-[#E9E1D8]/10 rounded-full blur-sm"></div>
+            </div>
+          )}
         </button>
-      </div>
-
-      {/* Add CSS for animations */}
-      <style jsx>{`
+      </nav>
+      
+      {/* Animation styles */}
+      <style>{`
         @keyframes bounce-once {
           0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-4px); }
-        }
-        @keyframes ping-slow {
-          0% { transform: scale(1); opacity: 1; }
-          100% { transform: scale(2); opacity: 0; }
+          50% { transform: translateY(-6px); }
         }
         @keyframes pulse-slow {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.7; }
-        }
-        @keyframes text-pop {
-          0% { transform: scale(1); }
-          50% { transform: scale(1.05); }
-          100% { transform: scale(1); }
-        }
-        @keyframes pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.5; }
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.8; transform: scale(1.1); }
         }
         .animate-bounce-once {
           animation: bounce-once 0.3s ease-in-out;
         }
-        .animate-ping-slow {
-          animation: ping-slow 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
-        }
         .animate-pulse-slow {
-          animation: pulse-slow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-        }
-        .animate-text-pop {
-          animation: text-pop 0.2s ease-out;
-        }
-        .animate-pulse {
-          animation: pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+          animation: pulse-slow 1.5s ease-in-out infinite;
         }
       `}</style>
-    </nav>
+    </div>
   );
 };
 

@@ -12,6 +12,9 @@ import {
   Link as LinkIcon,
   ExternalLink,
   Type,
+  Smartphone,
+  Tablet,
+  Monitor,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,6 +39,8 @@ interface HeaderSlide {
   title?: string;
   subtitle?: string;
   image_url: string;
+  mobile_image_url?: string;
+  tablet_image_url?: string;
   button_text?: string;
   button_link?: string;
   background_color: string;
@@ -46,6 +51,8 @@ interface HeaderSlide {
   sort_order: number;
   created_at: string;
   slide_type: "text_image" | "text_only" | "image_only";
+  image_position?: "center" | "top" | "bottom" | "left" | "right";
+  content_position?: "left" | "center" | "right";
 }
 
 const AdminHeaderSlides = () => {
@@ -57,15 +64,19 @@ const AdminHeaderSlides = () => {
     title: "",
     subtitle: "",
     image_url: "",
+    mobile_image_url: "",
+    tablet_image_url: "",
     button_text: "",
     button_link: "",
     background_color: "#ffffff",
     text_color: "#000000",
     button_color: "#3b82f6",
-    button_text_color: "#ffffff",
+    button_text_text_color: "#ffffff",
     is_active: true,
     sort_order: 0,
     slide_type: "text_image" as "text_image" | "text_only" | "image_only",
+    image_position: "center" as "center" | "top" | "bottom" | "left" | "right",
+    content_position: "center" as "left" | "center" | "right",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
@@ -90,7 +101,11 @@ const AdminHeaderSlides = () => {
       // Ensure slide_type has a valid default value if null
       const processedData = (data || []).map(slide => ({
         ...slide,
-        slide_type: slide.slide_type || "text_image" as "text_image" | "text_only" | "image_only"
+        slide_type: slide.slide_type || "text_image" as "text_image" | "text_only" | "image_only",
+        image_position: slide.image_position || "center",
+        content_position: slide.content_position || "center",
+        mobile_image_url: slide.mobile_image_url || "",
+        tablet_image_url: slide.tablet_image_url || "",
       }));
       
       setSlides(processedData);
@@ -119,7 +134,7 @@ const AdminHeaderSlides = () => {
           toast({
             variant: "destructive",
             title: "Error",
-            description: "Image URL is required for this slide type",
+            description: "Desktop image URL is required for this slide type",
           });
           setIsSubmitting(false);
           return;
@@ -143,15 +158,19 @@ const AdminHeaderSlides = () => {
         title: formData.title.trim() || null,
         subtitle: formData.subtitle.trim() || null,
         image_url: formData.image_url.trim() || null,
+        mobile_image_url: formData.mobile_image_url.trim() || null,
+        tablet_image_url: formData.tablet_image_url.trim() || null,
         button_text: formData.button_text.trim() || null,
         button_link: formData.button_link.trim() || null,
         background_color: formData.background_color,
         text_color: formData.text_color,
         button_color: formData.button_color,
-        button_text_color: formData.button_text_color,
+        button_text_color: formData.button_text_text_color,
         is_active: formData.is_active,
         sort_order: formData.sort_order,
         slide_type: formData.slide_type,
+        image_position: formData.image_position,
+        content_position: formData.content_position,
       };
 
       console.log("Saving slide data:", slideData);
@@ -211,15 +230,19 @@ const AdminHeaderSlides = () => {
       title: slide.title || "",
       subtitle: slide.subtitle || "",
       image_url: slide.image_url || "",
+      mobile_image_url: slide.mobile_image_url || "",
+      tablet_image_url: slide.tablet_image_url || "",
       button_text: slide.button_text || "",
       button_link: slide.button_link || "",
       background_color: slide.background_color || "#ffffff",
       text_color: slide.text_color || "#000000",
       button_color: slide.button_color || "#3b82f6",
-      button_text_color: slide.button_text_color || "#ffffff",
+      button_text_text_color: slide.button_text_color || "#ffffff",
       is_active: slide.is_active !== undefined ? slide.is_active : true,
       sort_order: slide.sort_order || 0,
       slide_type: slide.slide_type || "text_image",
+      image_position: slide.image_position || "center",
+      content_position: slide.content_position || "center",
     });
     setIsDialogOpen(true);
   };
@@ -298,15 +321,19 @@ const AdminHeaderSlides = () => {
       title: "",
       subtitle: "",
       image_url: "",
+      mobile_image_url: "",
+      tablet_image_url: "",
       button_text: "",
       button_link: "",
       background_color: "#ffffff",
       text_color: "#000000",
       button_color: "#3b82f6",
-      button_text_color: "#ffffff",
+      button_text_text_color: "#ffffff",
       is_active: true,
       sort_order: slides.length,
       slide_type: "text_image",
+      image_position: "center",
+      content_position: "center",
     });
   };
 
@@ -336,6 +363,47 @@ const AdminHeaderSlides = () => {
     }
   };
 
+  const getImagePositionText = (position: string) => {
+    switch (position) {
+      case "top": return "Top";
+      case "bottom": return "Bottom";
+      case "left": return "Left";
+      case "right": return "Right";
+      default: return "Center";
+    }
+  };
+
+  const getContentPositionText = (position: string) => {
+    switch (position) {
+      case "left": return "Left";
+      case "right": return "Right";
+      default: return "Center";
+    }
+  };
+
+  const handleImageUrlChange = (url: string, type: 'desktop' | 'mobile' | 'tablet') => {
+    if (type === 'desktop') {
+      setFormData({ ...formData, image_url: url });
+    } else if (type === 'mobile') {
+      setFormData({ ...formData, mobile_image_url: url });
+    } else if (type === 'tablet') {
+      setFormData({ ...formData, tablet_image_url: url });
+    }
+  };
+
+  const renderImagePreview = (url: string, alt: string, size: string) => (
+    <div className={`relative border rounded overflow-hidden ${size}`}>
+      <img
+        src={url}
+        alt={alt}
+        className="w-full h-full object-cover"
+        onError={(e) => {
+          (e.target as HTMLImageElement).src = "/placeholder-slide.jpg";
+        }}
+      />
+    </div>
+  );
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -345,13 +413,13 @@ const AdminHeaderSlides = () => {
   }
 
   return (
-    <div className="container mx-auto p-6">
+    <div className="container mx-auto p-4 md:p-6">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-3xl font-bold">Header Slides</h1>
+          <h1 className="text-2xl md:text-3xl font-bold">Header Slides</h1>
           <p className="text-gray-600">Manage autosliding banner slides</p>
           <p className="text-sm text-blue-600 mt-1">
-            <strong>Important:</strong> When a button link is set, the entire slide image will be clickable on the homepage
+            <strong>Important:</strong> For best mobile experience, upload different image sizes for each device
           </p>
         </div>
         
@@ -362,7 +430,7 @@ const AdminHeaderSlides = () => {
 
         {/* Dialog for creating/editing slides */}
         <Dialog open={isDialogOpen} onOpenChange={handleDialogOpenChange}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
                 {editingSlide ? "Edit Slide" : "Create New Slide"}
@@ -377,7 +445,7 @@ const AdminHeaderSlides = () => {
                     onValueChange={(value: "text_image" | "text_only" | "image_only") =>
                       setFormData({ ...formData, slide_type: value })
                     }
-                    className="flex gap-4"
+                    className="flex flex-wrap gap-4"
                   >
                     <div className="flex items-center space-x-2">
                       <RadioGroupItem value="text_image" id="text_image" />
@@ -404,7 +472,7 @@ const AdminHeaderSlides = () => {
                 </div>
 
                 {(formData.slide_type === "text_image" || formData.slide_type === "text_only") && (
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="title">
                         Title {formData.slide_type === "text_only" ? "(Optional)" : ""}
@@ -433,41 +501,140 @@ const AdminHeaderSlides = () => {
                 )}
 
                 {(formData.slide_type === "text_image" || formData.slide_type === "image_only") && (
-                  <div className="space-y-2">
-                    <Label htmlFor="image_url">Image URL *</Label>
-                    <div className="flex gap-2">
-                      <Input
-                        id="image_url"
-                        value={formData.image_url}
-                        onChange={(e) =>
-                          setFormData({ ...formData, image_url: e.target.value })
-                        }
-                        placeholder="https://example.com/image.jpg"
-                        required={formData.slide_type !== "text_only"}
-                      />
-                      {formData.image_url && (
-                        <div className="w-20 h-20 border rounded overflow-hidden">
-                          <img
-                            src={formData.image_url}
-                            alt="Preview"
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).src =
-                                "/placeholder-slide.jpg";
-                            }}
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {/* Desktop Image */}
+                      <div className="space-y-2">
+                        <Label htmlFor="image_url" className="flex items-center gap-2">
+                          <Monitor className="h-4 w-4" />
+                          Desktop Image URL *
+                        </Label>
+                        <div className="flex gap-2">
+                          <Input
+                            id="image_url"
+                            value={formData.image_url}
+                            onChange={(e) => handleImageUrlChange(e.target.value, 'desktop')}
+                            placeholder="https://example.com/desktop-image.jpg"
+                            required={formData.slide_type !== "text_only"}
+                            className="flex-1"
                           />
+                        </div>
+                        {formData.image_url && (
+                          <div className="mt-2">
+                            {renderImagePreview(formData.image_url, "Desktop preview", "w-full h-32")}
+                          </div>
+                        )}
+                        <p className="text-xs text-gray-500">
+                          Recommended: 1920x800px (16:7 ratio)
+                        </p>
+                      </div>
+
+                      {/* Tablet Image */}
+                      <div className="space-y-2">
+                        <Label htmlFor="tablet_image_url" className="flex items-center gap-2">
+                          <Tablet className="h-4 w-4" />
+                          Tablet Image URL (Optional)
+                        </Label>
+                        <div className="flex gap-2">
+                          <Input
+                            id="tablet_image_url"
+                            value={formData.tablet_image_url}
+                            onChange={(e) => handleImageUrlChange(e.target.value, 'tablet')}
+                            placeholder="https://example.com/tablet-image.jpg"
+                            className="flex-1"
+                          />
+                        </div>
+                        {formData.tablet_image_url && (
+                          <div className="mt-2">
+                            {renderImagePreview(formData.tablet_image_url, "Tablet preview", "w-full h-32")}
+                          </div>
+                        )}
+                        <p className="text-xs text-gray-500">
+                          Recommended: 1024x600px (for tablets)
+                        </p>
+                      </div>
+
+                      {/* Mobile Image */}
+                      <div className="space-y-2">
+                        <Label htmlFor="mobile_image_url" className="flex items-center gap-2">
+                          <Smartphone className="h-4 w-4" />
+                          Mobile Image URL (Optional)
+                        </Label>
+                        <div className="flex gap-2">
+                          <Input
+                            id="mobile_image_url"
+                            value={formData.mobile_image_url}
+                            onChange={(e) => handleImageUrlChange(e.target.value, 'mobile')}
+                            placeholder="https://example.com/mobile-image.jpg"
+                            className="flex-1"
+                          />
+                        </div>
+                        {formData.mobile_image_url && (
+                          <div className="mt-2">
+                            {renderImagePreview(formData.mobile_image_url, "Mobile preview", "w-full h-32")}
+                          </div>
+                        )}
+                        <p className="text-xs text-gray-500">
+                          Recommended: 600x800px (portrait)
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Image Position */}
+                      <div className="space-y-2">
+                        <Label htmlFor="image_position">Image Focus Position</Label>
+                        <select
+                          id="image_position"
+                          value={formData.image_position}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              image_position: e.target.value as any,
+                            })
+                          }
+                          className="w-full p-2 border rounded"
+                        >
+                          <option value="center">Center (Default)</option>
+                          <option value="top">Top</option>
+                          <option value="bottom">Bottom</option>
+                          <option value="left">Left</option>
+                          <option value="right">Right</option>
+                        </select>
+                        <p className="text-xs text-gray-500">
+                          Where to focus when image is cropped on smaller screens
+                        </p>
+                      </div>
+
+                      {/* Content Position (for text slides) */}
+                      {(formData.slide_type === "text_image" || formData.slide_type === "text_only") && (
+                        <div className="space-y-2">
+                          <Label htmlFor="content_position">Text Content Position</Label>
+                          <select
+                            id="content_position"
+                            value={formData.content_position}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                content_position: e.target.value as any,
+                              })
+                            }
+                            className="w-full p-2 border rounded"
+                          >
+                            <option value="center">Center (Default)</option>
+                            <option value="left">Left</option>
+                            <option value="right">Right</option>
+                          </select>
+                          <p className="text-xs text-gray-500">
+                            Where to position text content on the slide
+                          </p>
                         </div>
                       )}
                     </div>
-                    <p className="text-xs text-gray-500">
-                      {formData.slide_type === "text_image" 
-                        ? "Required for text+image slides"
-                        : "Required for image-only slides"}
-                    </p>
                   </div>
                 )}
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="button_text">Button Text (Optional)</Label>
                     <Input
@@ -504,7 +671,7 @@ const AdminHeaderSlides = () => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="background_color">Background Color</Label>
                     <div className="flex gap-2">
@@ -529,6 +696,7 @@ const AdminHeaderSlides = () => {
                           })
                         }
                         placeholder="#ffffff"
+                        className="flex-1"
                       />
                     </div>
                   </div>
@@ -557,6 +725,7 @@ const AdminHeaderSlides = () => {
                             })
                           }
                           placeholder="#000000"
+                          className="flex-1"
                         />
                       </div>
                     </div>
@@ -564,7 +733,7 @@ const AdminHeaderSlides = () => {
                 </div>
 
                 {formData.button_text && (
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="button_color">Button Color</Label>
                       <div className="flex gap-2">
@@ -589,6 +758,7 @@ const AdminHeaderSlides = () => {
                             })
                           }
                           placeholder="#3b82f6"
+                          className="flex-1"
                         />
                       </div>
                     </div>
@@ -597,32 +767,33 @@ const AdminHeaderSlides = () => {
                       <div className="flex gap-2">
                         <Input
                           id="button_text_color"
-                          value={formData.button_text_color}
+                          value={formData.button_text_text_color}
                           onChange={(e) =>
                             setFormData({
                               ...formData,
-                              button_text_color: e.target.value,
+                              button_text_text_color: e.target.value,
                             })
                           }
                           type="color"
                           className="w-12 h-12 p-1"
                         />
                         <Input
-                          value={formData.button_text_color}
+                          value={formData.button_text_text_color}
                           onChange={(e) =>
                             setFormData({
                               ...formData,
-                              button_text_color: e.target.value,
+                              button_text_text_color: e.target.value,
                             })
                           }
                           placeholder="#ffffff"
+                          className="flex-1"
                         />
                       </div>
                     </div>
                   </div>
                 )}
 
-                <div className="flex items-center justify-between pt-4">
+                <div className="flex flex-col md:flex-row md:items-center justify-between pt-4 gap-4">
                   <div className="flex items-center space-x-2">
                     <Switch
                       checked={formData.is_active}
@@ -652,16 +823,17 @@ const AdminHeaderSlides = () => {
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2 pt-4">
+              <div className="flex flex-col md:flex-row justify-end gap-2 pt-4">
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => handleDialogOpenChange(false)}
                   disabled={isSubmitting}
+                  className="w-full md:w-auto"
                 >
                   Cancel
                 </Button>
-                <Button type="submit" disabled={isSubmitting}>
+                <Button type="submit" disabled={isSubmitting} className="w-full md:w-auto">
                   {isSubmitting ? (
                     <>
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
@@ -697,29 +869,56 @@ const AdminHeaderSlides = () => {
         <div className="space-y-4">
           {slides.map((slide, index) => (
             <Card key={slide.id}>
-              <CardContent className="p-6">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-start gap-4 flex-1">
-                    {slide.slide_type !== "text_only" && slide.image_url && (
-                      <div className="relative w-40 h-24 rounded-lg overflow-hidden border">
-                        <img
-                          src={slide.image_url}
-                          alt={slide.title || "Slide image"}
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src =
-                              "/placeholder-slide.jpg";
-                          }}
-                        />
-                        {!slide.is_active && (
-                          <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                            <EyeOff className="h-6 w-6 text-white" />
-                          </div>
-                        )}
+              <CardContent className="p-4 md:p-6">
+                <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+                  <div className="flex flex-col md:flex-row md:items-start gap-4 flex-1">
+                    {slide.slide_type !== "text_only" && (
+                      <div className="flex flex-col md:flex-row gap-4">
+                        {/* Image Previews */}
+                        <div className="flex flex-col gap-2">
+                          {slide.image_url && (
+                            <div className="relative w-full md:w-40 h-24 rounded-lg overflow-hidden border">
+                              <img
+                                src={slide.image_url}
+                                alt={slide.title || "Desktop slide image"}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).src =
+                                    "/placeholder-slide.jpg";
+                                }}
+                              />
+                              <div className="absolute top-1 left-1 bg-black/70 text-white text-xs px-1 py-0.5 rounded">
+                                <Monitor className="inline h-3 w-3 mr-1" />
+                              </div>
+                              {!slide.is_active && (
+                                <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                                  <EyeOff className="h-6 w-6 text-white" />
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          {slide.mobile_image_url && (
+                            <div className="relative w-full md:w-40 h-24 rounded-lg overflow-hidden border">
+                              <img
+                                src={slide.mobile_image_url}
+                                alt={slide.title || "Mobile slide image"}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).src =
+                                    "/placeholder-slide.jpg";
+                                }}
+                              />
+                              <div className="absolute top-1 left-1 bg-black/70 text-white text-xs px-1 py-0.5 rounded">
+                                <Smartphone className="inline h-3 w-3 mr-1" />
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     )}
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                    
+                    <div className="flex-1 space-y-2">
+                      <div className="flex flex-wrap items-center gap-2 mb-2">
                         {getSlideTypeBadge(slide.slide_type || "text_image")}
                         {(slide.title || slide.subtitle) && (
                           <h3 className="font-semibold">
@@ -746,13 +945,15 @@ const AdminHeaderSlides = () => {
                           </Badge>
                         )}
                       </div>
-                      {slide.title && slide.subtitle && (
+                      
+                      {(slide.title || slide.subtitle) && (
                         <div className="mb-2">
                           {slide.title && <div className="font-medium">{slide.title}</div>}
                           {slide.subtitle && <div className="text-gray-600 text-sm">{slide.subtitle}</div>}
                         </div>
                       )}
-                      <div className="flex items-center gap-4 text-sm text-gray-500">
+                      
+                      <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
                         <span>Order: {slide.sort_order}</span>
                         {slide.slide_type === "text_only" && (
                           <span className="flex items-center gap-1">
@@ -766,6 +967,16 @@ const AdminHeaderSlides = () => {
                             <strong>Image-only slide</strong>
                           </span>
                         )}
+                        {slide.image_position && slide.image_position !== "center" && (
+                          <span className="flex items-center gap-1">
+                            <strong>Image focus:</strong> {getImagePositionText(slide.image_position)}
+                          </span>
+                        )}
+                        {slide.content_position && slide.content_position !== "center" && (
+                          <span className="flex items-center gap-1">
+                            <strong>Text position:</strong> {getContentPositionText(slide.content_position)}
+                          </span>
+                        )}
                         {slide.button_link && (
                           <span className="flex items-center gap-1">
                             <LinkIcon className="h-3 w-3" />
@@ -773,14 +984,39 @@ const AdminHeaderSlides = () => {
                           </span>
                         )}
                       </div>
+                      
+                      {/* Device-specific image info */}
+                      {(slide.mobile_image_url || slide.tablet_image_url) && (
+                        <div className="mt-2 pt-2 border-t border-gray-100">
+                          <div className="text-xs text-gray-500 flex flex-wrap gap-2">
+                            {slide.mobile_image_url && (
+                              <span className="flex items-center gap-1">
+                                <Smartphone className="h-3 w-3" />
+                                <span>Mobile image</span>
+                              </span>
+                            )}
+                            {slide.tablet_image_url && (
+                              <span className="flex items-center gap-1">
+                                <Tablet className="h-3 w-3" />
+                                <span>Tablet image</span>
+                              </span>
+                            )}
+                            {slide.mobile_image_url && (
+                              <span className="text-green-600">✓ Optimized for mobile</span>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 ml-4">
+                  
+                  <div className="flex flex-wrap items-center gap-2 ml-0 md:ml-4">
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => handleMove(index, "up")}
                       disabled={index === 0}
+                      className="flex-1 md:flex-none"
                     >
                       <ArrowUp className="h-4 w-4" />
                     </Button>
@@ -789,6 +1025,7 @@ const AdminHeaderSlides = () => {
                       size="sm"
                       onClick={() => handleMove(index, "down")}
                       disabled={index === slides.length - 1}
+                      className="flex-1 md:flex-none"
                     >
                       <ArrowDown className="h-4 w-4" />
                     </Button>
@@ -796,6 +1033,7 @@ const AdminHeaderSlides = () => {
                       variant="outline"
                       size="sm"
                       onClick={() => handleEdit(slide)}
+                      className="flex-1 md:flex-none"
                     >
                       <Edit className="h-4 w-4" />
                     </Button>
@@ -803,6 +1041,7 @@ const AdminHeaderSlides = () => {
                       variant="outline"
                       size="sm"
                       onClick={() => handleDelete(slide.id)}
+                      className="flex-1 md:flex-none"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
