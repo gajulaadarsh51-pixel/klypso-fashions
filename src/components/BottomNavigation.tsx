@@ -65,8 +65,8 @@ const BottomNavigation = () => {
 
   return (
     <div className="fixed bottom-2 left-0 right-0 z-50 flex justify-center md:hidden">
-      {/* Floating circular navigation container with INCREASED WIDTH and CLOSER TO BOTTOM */}
-      <nav className="flex items-center justify-between bg-gradient-to-b from-[#2A2D35] to-[#1A1C20] border border-white/10 px-8 py-4 rounded-full shadow-2xl w-full max-w-[500px] h-[80px] backdrop-blur-md mx-4">
+      {/* Circular navigation container positioned lower */}
+      <nav className="flex items-center justify-between bg-gradient-to-b from-[#2A2D35] to-[#1A1C20] border border-white/10 px-8 py-4 rounded-full shadow-2xl w-full max-w-[500px] h-[62px] backdrop-blur-md mx-4">
         
         {/* HOME */}
         <NavLink
