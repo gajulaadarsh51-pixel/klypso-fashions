@@ -24,6 +24,7 @@ const navItems = [
   { title: "Header Slides", url: "/admin/header-slides", icon: Sliders },
   { title: "Header Icons", url: "/admin/header-icons", icon: Package },
   { title: "Home Categories", url: "/admin/home-categories", icon: Grid },
+  { title: "Brands", url: "/admin/brands", icon: Grid },
   { title: "Settings", url: "/admin/settings", icon: Settings },
 ];
 

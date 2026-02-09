@@ -37,6 +37,7 @@ import AdminHeaderIcons from "./pages/admin/AdminHeaderIcons";
 import AdminHeaderSlides from "./pages/admin/AdminHeaderSlides";
 import AdminReviews from "./pages/admin/AdminReviews"; // ✅ ADDED
 import HomeCategoryAdmin from "./pages/admin/HomeCategoryAdmin";
+import AdminBrands from "./pages/admin/AdminBrands";
 
 
 import AccountLayout from "./pages/account/AccountLayout";
@@ -71,6 +72,7 @@ const AppContent = () => {
             <Route path="header-slides" element={<AdminHeaderSlides />} />
             <Route path="reviews" element={<AdminReviews />} /> {/* ✅ FIXED */}
             <Route path="home-categories" element={<HomeCategoryAdmin />} />
+            <Route path="brands" element={<AdminBrands />} />
 
           </Route>
 

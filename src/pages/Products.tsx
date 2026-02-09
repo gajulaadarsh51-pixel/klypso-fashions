@@ -254,6 +254,7 @@ const Products = () => {
   const searchTerm = (searchParams.get("search") || "")
     .toLowerCase()
     .trim();
+  const brand = searchParams.get("brand");
 
   /* ================= URL HELPERS ================= */
   const setSelectedCategory = (category: string | null) => {
@@ -267,6 +268,7 @@ const Products = () => {
 
     newParams.delete("sale");
     newParams.delete("search");
+    newParams.delete("brand");
     setSearchParams(newParams);
   };
 
@@ -420,6 +422,13 @@ const Products = () => {
       filtered = filtered.filter((p) => p.is_on_sale);
     }
 
+    // 🏷 BRAND FILTER
+    if (brand) {
+      filtered = filtered.filter(
+        (p) => p.brand?.toLowerCase() === brand.toLowerCase()
+      );
+    }
+
     // 💰 PRICE FILTER
     filtered = filtered.filter(
       (p) => p.price >= priceRange[0] && p.price <= priceRange[1]
@@ -441,7 +450,7 @@ const Products = () => {
     }
 
     return filtered;
-  }, [products, selectedCategory, isSale, searchTerm, priceRange, sortBy]);
+  }, [products, selectedCategory, isSale, searchTerm, brand, priceRange, sortBy]);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -457,6 +466,8 @@ const Products = () => {
                 ? "Sale"
                 : searchTerm
                 ? `Search results for "${searchTerm}"`
+                : brand
+                ? `Brand: ${brand.charAt(0).toUpperCase() + brand.slice(1)}`
                 : formatCategoryName(selectedCategory)}
             </h1>
             <p className="text-muted-foreground mt-2">
@@ -513,13 +524,13 @@ const Products = () => {
                     <button
                       onClick={() => setSelectedCategory(null)}
                       className={`w-full flex items-center justify-between p-2 rounded transition-all ${
-                        !selectedCategory
+                        !selectedCategory && !brand
                           ? "bg-primary/10 text-primary font-medium border-l-4 border-primary pl-3"
                           : "text-gray-700 hover:bg-gray-50 hover:text-primary"
                       }`}
                     >
                       <span>All Products</span>
-                      {!selectedCategory && (
+                      {!selectedCategory && !brand && (
                         <span className="bg-primary text-white text-xs px-2 py-1 rounded-full">
                           {products.length}
                         </span>
@@ -574,6 +585,7 @@ const Products = () => {
                         newParams.set("sale", "true");
                         newParams.delete("category");
                         newParams.delete("search");
+                        newParams.delete("brand");
                       }
                       setSearchParams(newParams);
                     }}

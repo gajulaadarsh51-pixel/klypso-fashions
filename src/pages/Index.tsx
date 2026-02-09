@@ -7,6 +7,8 @@ import AuthModal from '@/components/AuthModal';
 import { categories } from '@/data/products';
 import { useProducts } from '@/hooks/useProducts';
 import HomeCategoryGrid from '@/components/HomeCategoryGrid';
+import BrandSpotlight from "@/components/BrandSpotlight";
+
 
 const Index = () => {
   const { data: products = [], isLoading } = useProducts();
@@ -91,47 +93,8 @@ const Index = () => {
         {/* ✅ ADDED: Home Category Strip */}
         <HomeCategoryGrid />
 
-        {/* Categories Section */}
-        <section className="py-8 sm:py-12 md:py-20 bg-cream">
-          <div className="container mx-auto px-4">
-            <div className="text-center mb-6 sm:mb-8 md:mb-12">
-              <h2 className="font-heading text-lg sm:text-xl md:text-2xl lg:text-3xl font-semibold mb-1 sm:mb-2 md:mb-4">
-                Shop by Category
-              </h2>
-              <p className="text-muted-foreground text-xs sm:text-sm md:text-base">
-                Find your perfect style
-              </p>
-            </div>
+        <BrandSpotlight />
 
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 md:gap-6">
-              {updatedCategories.map((category) => (
-                <Link
-                  key={category.name}
-                  to={`/products?category=${category.name.toLowerCase()}`}
-                  className="group relative h-[150px] sm:h-[200px] md:h-[300px] lg:h-[400px] overflow-hidden rounded-lg"
-                >
-                  <img
-                    src={category.image}
-                    alt={category.name}
-                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-primary/70 to-transparent" />
-                  <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-4 md:p-6 lg:p-8 text-primary-foreground">
-                    <h3 className="font-heading text-sm sm:text-base md:text-lg lg:text-xl font-semibold mb-1">
-                      {category.name}
-                    </h3>
-                    <p className="text-[10px] sm:text-xs text-primary-foreground/70 mb-1 sm:mb-2 md:mb-4">
-                      {category.count} Products
-                    </p>
-                    <span className="hidden sm:inline-flex items-center gap-2 text-xs sm:text-sm font-medium group-hover:gap-4 transition-all">
-                      SHOP NOW <ArrowRight size={14} />
-                    </span>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </div>
-        </section>
 
         {/* Featured Products */}
         <section className="py-8 sm:py-12 md:py-20">

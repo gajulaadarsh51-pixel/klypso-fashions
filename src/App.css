@@ -1,9 +1,45 @@
+/* =========================
+   GLOBAL RESET & SAFETY
+========================= */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden !important; /* 🔥 KILLS TOP HORIZONTAL SCROLL */
+}
+
+/* =========================
+   ROOT FIX (IMPORTANT)
+========================= */
+
 #root {
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;          /* ❌ removed 2rem padding */
+  text-align: center;
+}
+
+/* =========================
+   OPTIONAL CONTENT WRAPPER
+   (use in pages, not header)
+========================= */
+/*
+.page-container {
   max-width: 1280px;
   margin: 0 auto;
   padding: 2rem;
-  text-align: center;
 }
+*/
+
+/* =========================
+   LOGO DEMO STYLES
+========================= */
 
 .logo {
   height: 6em;
@@ -11,12 +47,42 @@
   will-change: filter;
   transition: filter 300ms;
 }
+
 .logo:hover {
   filter: drop-shadow(0 0 2em #646cffaa);
 }
+
 .logo.react:hover {
   filter: drop-shadow(0 0 2em #61dafbaa);
 }
+
+/* =========================
+   SCROLLBAR HIDING UTILS
+========================= */
+
+/* Hide scrollbar but allow scroll */
+.no-scrollbar {
+  -ms-overflow-style: none;  /* IE & Edge */
+  scrollbar-width: none;     /* Firefox */
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;             /* Chrome, Safari */
+}
+
+/* Alias (extra safety) */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* =========================
+   ANIMATIONS (DEMO)
+========================= */
 
 @keyframes logo-spin {
   from {
@@ -32,6 +98,10 @@
     animation: logo-spin infinite 20s linear;
   }
 }
+
+/* =========================
+   CARDS & TEXT
+========================= */
 
 .card {
   padding: 2em;
