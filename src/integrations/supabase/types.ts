@@ -1,3 +1,4 @@
+// integrations/supabase/types.ts
 export type Json =
   | string
   | number
@@ -14,6 +15,68 @@ export type Database = {
   }
   public: {
     Tables: {
+      // ✅ ADD these 2 new tables to your existing Tables object
+      festivals: {
+        Row: {
+          id: string
+          title: string
+          subtitle: string
+          image_url: string
+          bg_color: string
+          offer: string
+          category: string | null
+          custom_link: string | null
+          is_active: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          title: string
+          subtitle: string
+          image_url: string
+          bg_color?: string
+          offer: string
+          category?: string | null
+          custom_link?: string | null
+          is_active?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          title?: string
+          subtitle?: string
+          image_url?: string
+          bg_color?: string
+          offer?: string
+          category?: string | null
+          custom_link?: string | null
+          is_active?: boolean
+          created_at?: string
+        }
+        Relationships: []
+      }
+      site_sections: {
+        Row: {
+          id: string
+          section_key: string
+          is_enabled: boolean
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          section_key: string
+          is_enabled?: boolean
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          section_key?: string
+          is_enabled?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      // ✅ YOUR EXISTING TABLES - KEEP THESE EXACTLY AS THEY ARE
       orders: {
         Row: {
           created_at: string
@@ -201,6 +264,7 @@ export type Database = {
   }
 }
 
+// ✅ KEEP ALL THE REST OF YOUR EXISTING CODE BELOW - DON'T CHANGE ANYTHING
 type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
 
 type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]

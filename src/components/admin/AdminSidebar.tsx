@@ -9,11 +9,15 @@ import {
   X,
   Sliders,
   Grid,
+  MessageSquare, // First import
+  Gift
 } from "lucide-react";
+
 import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { MessageSquare } from "lucide-react";
+// REMOVE THIS DUPLICATE IMPORT:
+// import { MessageSquare } from "lucide-react";
 
 const navItems = [
   { title: "Dashboard", url: "/admin", icon: LayoutDashboard },
@@ -25,6 +29,7 @@ const navItems = [
   { title: "Header Icons", url: "/admin/header-icons", icon: Package },
   { title: "Home Categories", url: "/admin/home-categories", icon: Grid },
   { title: "Brands", url: "/admin/brands", icon: Grid },
+  { title: "Festivals", url: "/admin/festivals", icon: Gift },
   { title: "Settings", url: "/admin/settings", icon: Settings },
 ];
 

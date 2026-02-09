@@ -1,3 +1,4 @@
+// App.tsx (or your main router file)
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import ScrollToTop from "@/components/ScrollToTop";
@@ -35,10 +36,10 @@ import AdminAnalytics from "./pages/admin/AdminAnalytics";
 import AdminSettings from "./pages/admin/AdminSettings";
 import AdminHeaderIcons from "./pages/admin/AdminHeaderIcons";
 import AdminHeaderSlides from "./pages/admin/AdminHeaderSlides";
-import AdminReviews from "./pages/admin/AdminReviews"; // ✅ ADDED
+import AdminReviews from "./pages/admin/AdminReviews";
 import HomeCategoryAdmin from "./pages/admin/HomeCategoryAdmin";
 import AdminBrands from "./pages/admin/AdminBrands";
-
+import AdminFestivals from "./pages/admin/AdminFestivals"; // ✅ ADD THIS IMPORT
 
 import AccountLayout from "./pages/account/AccountLayout";
 import AccountProfile from "./pages/account/AccountProfile";
@@ -70,10 +71,10 @@ const AppContent = () => {
             <Route path="settings" element={<AdminSettings />} />
             <Route path="header-icons" element={<AdminHeaderIcons />} />
             <Route path="header-slides" element={<AdminHeaderSlides />} />
-            <Route path="reviews" element={<AdminReviews />} /> {/* ✅ FIXED */}
+            <Route path="reviews" element={<AdminReviews />} />
             <Route path="home-categories" element={<HomeCategoryAdmin />} />
             <Route path="brands" element={<AdminBrands />} />
-
+            <Route path="festivals" element={<AdminFestivals />} /> {/* ✅ ADD THIS ROUTE */}
           </Route>
 
           {/* PUBLIC ROUTES */}

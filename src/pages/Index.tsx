@@ -1,5 +1,6 @@
+// pages/Index.tsx
 import { Link } from 'react-router-dom';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, ChevronLeft, ChevronRight, Gift, Loader2 } from 'lucide-react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import ProductCard from '@/components/ProductCard';
@@ -8,12 +9,18 @@ import { categories } from '@/data/products';
 import { useProducts } from '@/hooks/useProducts';
 import HomeCategoryGrid from '@/components/HomeCategoryGrid';
 import BrandSpotlight from "@/components/BrandSpotlight";
-
+import { useRef } from 'react';
+import { useFestivals } from '@/hooks/useFestivals';
+import { useSectionToggle } from '@/hooks/useSectionToggle';
 
 const Index = () => {
   const { data: products = [], isLoading } = useProducts();
+  const { data: festivals = [], isLoading: festivalsLoading } = useFestivals();
+  const { isEnabled: isFestivalEnabled } = useSectionToggle("festivals_section");
+  
   const featuredProducts = products.slice(0, 4);
   const newArrivals = products.filter((p) => p.is_new);
+  const festivalScrollRef = useRef<HTMLDivElement>(null);
 
   // ✅ REAL PRODUCT COUNT CALCULATION FOR EACH CATEGORY
   const getCategoryCount = (categoryName: string) => {
@@ -70,19 +77,30 @@ const Index = () => {
     }).length;
   };
 
-  // ✅ Updated categories with real counts - ADDED KIDS CATEGORY
+  // ✅ Updated categories with real counts
   const updatedCategories = [
     ...categories,
-    // Add Kids category if not already in categories array
     ...(categories.some(cat => cat.name.toLowerCase() === 'kids') ? [] : [{
       name: 'Kids',
-      image: 'https://www.kidrovia.com/wp-content/uploads/2024/02/Kidrovia.png', // Kids fashion image
+      image: 'https://www.kidrovia.com/wp-content/uploads/2024/02/Kidrovia.png',
       count: getCategoryCount('Kids')
     }])
   ].map(cat => ({
     ...cat,
     count: getCategoryCount(cat.name)
   }));
+
+  // Function to scroll left/right
+  const scrollSection = (ref: React.RefObject<HTMLDivElement>, direction: 'left' | 'right') => {
+    if (ref.current) {
+      const scrollAmount = 300;
+      if (direction === 'left') {
+        ref.current.scrollLeft -= scrollAmount;
+      } else {
+        ref.current.scrollLeft += scrollAmount;
+      }
+    }
+  };
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -92,10 +110,153 @@ const Index = () => {
       <main className="flex-1">
         {/* ✅ ADDED: Home Category Strip */}
         <HomeCategoryGrid />
-
+        
+        {/* ✅ BRANDS IN SPOTLIGHT SECTION */}
         <BrandSpotlight />
+        
+// pages/Index.tsx (Festival Section Only - Updated Part)
+{/* ✅ FESTIVALS AND SPECIAL DAYS SECTION (Dynamic from Supabase) */}
+{isFestivalEnabled && (
+  <section className="py-6 sm:py-8 md:py-10 bg-gradient-to-r from-amber-50 to-orange-50">
+    <div className="container mx-auto px-4">
+      <div className="flex items-center justify-between mb-4 sm:mb-6">
+        <div className="flex items-center gap-3">
+          <Gift className="text-orange-600" size={24} />
+          <div>
+            <h2 className="font-heading text-lg sm:text-xl md:text-2xl font-semibold text-gray-900">
+              Festivals and Special Days
+            </h2>
+            <p className="text-muted-foreground text-xs sm:text-sm mt-1">
+              Celebrate with exclusive collections
+            </p>
+          </div>
+        </div>
+        
+        {/* Scroll buttons for desktop */}
+        {festivals && festivals.length > 4 && (
+          <div className="hidden md:flex items-center gap-2">
+            <button 
+              onClick={() => scrollSection(festivalScrollRef, 'left')}
+              className="p-2 rounded-full bg-white border shadow-sm hover:bg-gray-50 transition-colors"
+              aria-label="Scroll left"
+            >
+              <ChevronLeft size={20} className="text-gray-600" />
+            </button>
+            <button 
+              onClick={() => scrollSection(festivalScrollRef, 'right')}
+              className="p-2 rounded-full bg-white border shadow-sm hover:bg-gray-50 transition-colors"
+              aria-label="Scroll right"
+            >
+              <ChevronRight size={20} className="text-gray-600" />
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Festival Cards Container with Horizontal Scroll */}
+      <div className="relative">
+        {festivalsLoading ? (
+          <div className="flex justify-center items-center py-8">
+            <Loader2 className="animate-spin text-orange-500" size={24} />
+          </div>
+        ) : festivals && festivals.length > 0 ? (
+          <>
+            <div 
+              ref={festivalScrollRef}
+              className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide scroll-smooth"
+              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+            >
+              {festivals.map((festival) => {
+                // Check if it's a Google Drive URL and convert it
+                let imageUrl = festival.image_url;
+                if (imageUrl && imageUrl.includes('drive.google.com')) {
+                  const fileId = imageUrl.match(/id=([^&]+)/)?.[1] || 
+                                imageUrl.match(/\/d\/([^\/]+)/)?.[1];
+                  if (fileId) {
+                    // Use Google Drive thumbnail for better performance
+                    imageUrl = `https://drive.google.com/thumbnail?id=${fileId}&sz=w800`;
+                  }
+                }
+
+                return (
+                  <div 
+                    key={festival.id}
+                    className="flex-shrink-0 w-full sm:w-64 md:w-72 bg-white rounded-xl shadow-sm border overflow-hidden hover:shadow-md transition-shadow duration-300"
+                  >
+                    <div className={`h-32 ${festival.bg_color} relative`}>
+                      <img
+                        src={imageUrl}
+                        alt={festival.title}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          // Fallback if image fails to load
+                          console.error('Image failed to load:', imageUrl);
+                          (e.target as HTMLImageElement).src = '/placeholder.svg';
+                          
+                          // Try alternative Google Drive URL format
+                          if (imageUrl && imageUrl.includes('drive.google.com')) {
+                            const fileId = imageUrl.match(/id=([^&]+)/)?.[1];
+                            if (fileId) {
+                              setTimeout(() => {
+                                (e.target as HTMLImageElement).src = `https://lh3.googleusercontent.com/d/${fileId}=w800`;
+                              }, 100);
+                            }
+                          }
+                        }}
+                        loading="lazy"
+                      />
+                      <div className="absolute top-3 left-3">
+                        <span className="px-2 py-1 text-xs font-medium bg-white/90 backdrop-blur-sm rounded-full text-gray-800">
+                          {festival.offer}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <div className="p-4">
+                      <h3 className="font-semibold text-gray-900 text-lg">{festival.title}</h3>
+                      <p className="text-sm text-gray-600 mt-1">{festival.subtitle}</p>
+                      
+                      <div className="mt-3 pt-3 border-t border-gray-100">
+                        <a
+                          href={
+                            festival.custom_link
+                              ? festival.custom_link
+                              : `/products?category=${festival.category || 'festival'}`
+                          }
+                          className="block w-full py-2 text-sm font-medium text-orange-600 hover:text-orange-700 transition-colors text-center"
+                        >
+                          Shop Collection →
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Gradient fade effect on sides */}
+            <div className="absolute left-0 top-0 bottom-4 w-8 bg-gradient-to-r from-white to-transparent pointer-events-none"></div>
+            <div className="absolute right-0 top-0 bottom-4 w-8 bg-gradient-to-l from-white to-transparent pointer-events-none"></div>
+          </>
+        ) : (
+          <div className="text-center py-8">
+            <p className="text-gray-500">No festivals available at the moment.</p>
+          </div>
+        )}
+      </div>
+    </div>
+  </section>
+)}
 
 
+
+
+
+
+
+
+
+          
         {/* Featured Products */}
         <section className="py-8 sm:py-12 md:py-20">
           <div className="container mx-auto px-4">
