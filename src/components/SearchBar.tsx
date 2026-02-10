@@ -1,3 +1,4 @@
+// SearchBar.tsx
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -9,6 +10,15 @@ import {
   X,
   TrendingUp,
   ArrowLeft,
+  Sparkles,
+  Camera,
+  Image as ImageIcon,
+  Star,
+  Tag,
+  ShoppingBag,
+  Grid,
+  Heart,
+  Zap,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -16,26 +26,73 @@ import { supabase } from "@/integrations/supabase/client";
 const normalize = (v?: string) =>
   v?.toString().toLowerCase().trim() || "";
 
-// Trending searches like Flipkart
+// Trending searches - FASHION ONLY
 const TRENDING_SEARCHES = [
-  "Kurtas",
-  "Chocolates",
-  "Valentines day gifts",
-  "Oppo reno 15c 5g",
-  "Laptop table",
-  "Samsung a07 mobile 5g",
-  "Galaxy a07 5g",
-  "Egg boilers",
+  "Men's Running Shoes",
+  "Women's Summer Dresses",
+  "Men's T-Shirts",
+  "Women's Kurtas",
+  "Men's Jeans",
+  "Women's Sarees",
+  "Men's Formal Shirts",
+  "Women's Handbags",
+  "Men's Watches",
+  "Women's Jewelry",
 ];
 
-// Recommended stores like Flipkart
-const RECOMMENDED_STORES = [
-  "Body and Fashion",
-  "Women's Style",
-  "Bath Essentials",
-  "Home Decor",
-  "Electronics Hub",
-  "Grocery Store",
+// Popular categories - FASHION ONLY
+const POPULAR_CATEGORIES = [
+  { name: "Men", icon: "👔", color: "bg-blue-100" },
+  { name: "Women", icon: "👗", color: "bg-pink-100" },
+  { name: "Footwear", icon: "👟", color: "bg-green-100" },
+  { name: "Accessories", icon: "⌚", color: "bg-purple-100" },
+  { name: "Traditional", icon: "🥻", color: "bg-yellow-100" },
+  { name: "Sports ", icon: "⚽", color: "bg-orange-100" },
+];
+
+// Recommended categories - FASHION ONLY
+const RECOMMENDED_CATEGORIES = [
+  "Today's Deals",
+  "Best Sellers",
+  "New Arrivals",
+  "Men's Collection",
+  "Women's Collection",
+  "Kids Fashion",
+  "Winter Wear",
+  "Summer Collection",
+  "Festive Special",
+  "Wedding Collection",
+];
+
+// Fashion sub-categories for women - UPDATED WITH COMPREHENSIVE LIST
+const WOMENS_CATEGORIES = [
+  "Sarees",
+  "Lehengas",
+  "Kurtis",
+  "Dresses",
+  "Leggings",
+  "Night Dresses",
+  "Blouses",
+  "Petticoats",
+  "Palazzos",
+  "Corsets",
+  "Bodysuits",
+  "Rompers",
+  "Hijabs",
+];
+
+// Fashion sub-categories for men
+const MENS_CATEGORIES = [
+  "T-Shirts",
+  "Formal Shirts",
+  "Jeans",
+  "Trousers",
+  "Jackets",
+  "Winter Wear",
+  "Watches",
+  "Footwear",
+  "Accessories",
+  "Grooming",
 ];
 
 // Local storage key for recent searches
@@ -75,22 +132,175 @@ const clearRecentSearches = () => {
   }
 };
 
+// Fixed gender detection function
+const isMenProduct = (product: any): boolean => {
+  if (!product) return false;
+  
+  const productGender = normalize(product.gender || '');
+  const productCategory = normalize(product.category || '');
+  const productName = normalize(product.name || '');
+  const productSubcategory = normalize(product.subcategory || '');
+  
+  const menExactTerms = ['men', 'male', 'mens', "men's", 'gentleman', 'gentlemen', 'boy', 'boys'];
+  const womenExactTerms = ['women', 'female', 'womens', "women's", 'lady', 'ladies', 'girl', 'girls'];
+  
+  if (productGender) {
+    const isMenGender = menExactTerms.some(term => productGender === term);
+    const isWomenGender = womenExactTerms.some(term => productGender === term);
+    
+    if (isMenGender && !isWomenGender) return true;
+    if (isWomenGender) return false;
+  }
+  
+  const hasExplicitMenTerm = menExactTerms.some(term => 
+    productName.includes(term) ||
+    productCategory.includes(term) ||
+    productSubcategory.includes(term)
+  );
+  
+  const hasExplicitWomenTerm = womenExactTerms.some(term => 
+    productName.includes(term) ||
+    productCategory.includes(term) ||
+    productSubcategory.includes(term)
+  );
+  
+  if (hasExplicitWomenTerm) return false;
+  
+  const isMenClothingPattern = (
+    (productCategory.includes('shirt') && !productName.includes('blouse')) ||
+    productCategory.includes('t-shirt') ||
+    (productCategory.includes('formal') && !productName.includes('women')) ||
+    productCategory.includes('suit') ||
+    productCategory.includes('blazer') ||
+    (productCategory.includes('trouser') && !productName.includes('women')) ||
+    (productCategory.includes('pant') && !productName.includes('women')) ||
+    (productName.includes('shirt') && productName.includes('men')) ||
+    productName.includes('mens shirt') ||
+    productName.includes('men shirt') ||
+    productName.includes("men's shirt") ||
+    (productName.includes('formal shirt') && !productName.includes('women')) ||
+    productName.includes('office shirt') ||
+    productName.includes('men t-shirt') ||
+    productName.includes("men's t-shirt") ||
+    productName.includes('mens t-shirt') ||
+    productName.includes('men trouser') ||
+    productName.includes('men pant') ||
+    productName.includes('men jean')
+  );
+  
+  return hasExplicitMenTerm || isMenClothingPattern;
+};
+
+const isWomenProduct = (product: any): boolean => {
+  if (!product) return false;
+  
+  const productGender = normalize(product.gender || '');
+  const productCategory = normalize(product.category || '');
+  const productName = normalize(product.name || '');
+  const productSubcategory = normalize(product.subcategory || '');
+  
+  const womenExactTerms = ['women', 'female', 'womens', "women's", 'lady', 'ladies', 'girl', 'girls'];
+  const menExactTerms = ['men', 'male', 'mens', "men's", 'gentleman', 'gentlemen', 'boy', 'boys'];
+  
+  if (productGender) {
+    const isWomenGender = womenExactTerms.some(term => productGender === term);
+    const isMenGender = menExactTerms.some(term => productGender === term);
+    
+    if (isWomenGender && !isMenGender) return true;
+    if (isMenGender) return false;
+  }
+  
+  const hasExplicitWomenTerm = womenExactTerms.some(term => 
+    productName.includes(term) ||
+    productCategory.includes(term) ||
+    productSubcategory.includes(term)
+  );
+  
+  const hasExplicitMenTerm = menExactTerms.some(term => 
+    productName.includes(term) ||
+    productCategory.includes(term) ||
+    productSubcategory.includes(term)
+  );
+  
+  if (hasExplicitMenTerm) return false;
+  
+  const isWomenClothingPattern = (
+    productCategory.includes('dress') ||
+    productCategory.includes('gown') ||
+    productCategory.includes('saree') ||
+    productCategory.includes('lehenga') ||
+    productCategory.includes('blouse') ||
+    productCategory.includes('kurti') ||
+    productCategory.includes('kurtas') ||
+    (productCategory.includes('top') && !productName.includes('men')) ||
+    productCategory.includes('skirt') ||
+    productName.includes("women's") ||
+    productName.includes('womens') ||
+    productName.includes('women dress') ||
+    productName.includes('ladies dress') ||
+    productName.includes('women top') ||
+    productName.includes('ladies top') ||
+    productName.includes('women kurti') ||
+    productName.includes('women saree') ||
+    productName.includes('women blouse') ||
+    productCategory.includes('night') ||
+    productName.includes('night dress') ||
+    productName.includes('nightdress') ||
+    productName.includes('nightwear') ||
+    productName.includes('night wear') ||
+    productCategory.includes('lingerie') ||
+    productCategory.includes('innerwear') ||
+    productCategory.includes('nightgown') ||
+    productCategory.includes('nightie') ||
+    productCategory.includes('pajama') ||
+    productCategory.includes('pyjama')
+  );
+  
+  return hasExplicitWomenTerm || isWomenClothingPattern;
+};
+
+const isAccessoryProduct = (product: any): boolean => {
+  if (!product) return false;
+  
+  const productCategory = normalize(product.category || '');
+  const productName = normalize(product.name || '');
+  const productSubcategory = normalize(product.subcategory || '');
+  
+  return (
+    productCategory.includes('accessory') ||
+    productCategory.includes('watch') ||
+    productCategory.includes('jewel') ||
+    productCategory.includes('bag') ||
+    productCategory.includes('sunglass') ||
+    productCategory.includes('belt') ||
+    productCategory.includes('wallet') ||
+    productName.includes('watch') ||
+    productName.includes('belt') ||
+    productName.includes('bag') ||
+    productName.includes('sunglass') ||
+    productName.includes('wallet') ||
+    productSubcategory.includes('accessory') ||
+    productSubcategory.includes('watch') ||
+    productSubcategory.includes('jewel')
+  );
+};
+
 // Enhanced search keyword mappings
 const SEARCH_KEYWORD_MAPPINGS: Record<string, string[]> = {
-  "women": ["women", "womens", "woman", "womenswear", "female", "ladies", "girl", "girls", "women's"],
-  "men": ["men", "mens", "man", "menswear", "male", "gentlemen", "boy", "boys", "men's"],
+  "women": ["women", "womens", "woman", "womenswear", "female", "ladies", "girl", "girls", "women's", "woman's"],
+  "men": ["men", "mens", "man", "menswear", "male", "gentlemen", "boy", "boys", "men's", "man's"],
   "accessories": ["accessories", "accessory", "jewelry", "jewellery", "watches", "bags", "belts", "sunglasses", "wallet"],
   "shirts": ["shirts", "shirt", "top", "blouse", "tee", "t-shirt", "tshirt", "t shirt", "tops"],
   "dresses": ["dresses", "dress", "gown", "frock", "jumpsuit", "jumpers", "gowns"],
   "pants": ["pants", "trousers", "jeans", "leggings", "shorts", "bottoms", "denim", "trouser"],
   "shoes": ["shoes", "footwear", "sneakers", "boots", "sandals", "heels", "flats", "slippers", "footwear"],
   "jackets": ["jackets", "jacket", "coat", "blazer", "hoodie", "sweater", "sweatshirt", "cardigan"],
-  "kids": ["kids", "children", "child", "baby", "toddler", "boys", "girls", "kidswear", "childrenswear"],
+  "night": ["night", "nightdress", "nightwear", "nightgown", "nightie", "pajama", "pyjama", "sleepwear", "night dress"],
+  "saree": ["saree", "sari", "sarees"],
+  "lehenga": ["lehenga", "lehengas"],
+  "kurti": ["kurti", "kurtis", "kurta", "kurtas"],
   "new": ["new", "latest", "arrivals", "recent", "fresh", "new arrivals"],
   "sale": ["sale", "discount", "offer", "deal", "clearance", "bargain", "discounted", "offers"],
-  "electronics": ["electronics", "electronic", "mobile", "phone", "laptop", "tablet", "gadget", "device"],
-  "beauty": ["beauty", "cosmetics", "makeup", "skincare", "cream", "lotion", "perfume", "fragrance"],
-  "home": ["home", "home decor", "furniture", "decor", "kitchen", "living", "bedroom", "homeware"],
 };
 
 // Function to get all possible variations for a search term
@@ -98,17 +308,28 @@ const getAllSearchVariations = (searchTerm: string): string[] => {
   const normalizedTerm = normalize(searchTerm);
   const allVariations = new Set<string>();
   
-  // Add the original term
   allVariations.add(normalizedTerm);
   
-  // Add singular/plural variations
   if (normalizedTerm.endsWith('s')) {
-    allVariations.add(normalizedTerm.slice(0, -1)); // Remove 's'
+    allVariations.add(normalizedTerm.slice(0, -1));
   } else {
-    allVariations.add(normalizedTerm + 's'); // Add 's'
+    allVariations.add(normalizedTerm + 's');
   }
   
-  // Add common misspellings and variations
+  if (normalizedTerm.includes("men") || normalizedTerm === "man") {
+    allVariations.add("men");
+    allVariations.add("mens");
+    allVariations.add("men's");
+    allVariations.add("man");
+  }
+  
+  if (normalizedTerm.includes("women") || normalizedTerm === "woman") {
+    allVariations.add("women");
+    allVariations.add("womens");
+    allVariations.add("women's");
+    allVariations.add("woman");
+  }
+  
   const commonVariations: Record<string, string[]> = {
     'women': ['woman', 'womens', 'women\'s', 'womenswear', 'female'],
     'men': ['man', 'mens', 'men\'s', 'menswear', 'male'],
@@ -118,6 +339,10 @@ const getAllSearchVariations = (searchTerm: string): string[] => {
     'dresses': ['dress', 'gown', 'frock'],
     'jackets': ['jacket', 'coat', 'blazer'],
     'accessories': ['accessory', 'jewellery', 'jewelry'],
+    'night': ['nightdress', 'nightwear', 'nightgown', 'nightie'],
+    'saree': ['sari', 'sarees'],
+    'lehenga': ['lehengas'],
+    'kurti': ['kurtis', 'kurta', 'kurtas'],
   };
   
   Object.entries(commonVariations).forEach(([key, variations]) => {
@@ -137,261 +362,108 @@ const getAllSearchVariations = (searchTerm: string): string[] => {
   return Array.from(allVariations);
 };
 
-// Calculate relevance score for sorting
-const calculateRelevanceScore = (product: any, searchTerms: string[]): number => {
-  let score = 0;
-  
-  searchTerms.forEach(term => {
-    if (normalize(product.category).includes(term)) {
-      score += 5;
-    }
-    
-    if (normalize(product.name).includes(term)) {
-      score += 4;
-    }
-    
-    if (normalize(product.subcategory).includes(term)) {
-      score += 3;
-    }
-    
-    if (normalize(product.description).includes(term)) {
-      score += 1;
-    }
-    
-    if (product.gender && ['men', 'women', 'male', 'female', 'ladies', 'gentlemen'].includes(term)) {
-      const productGender = normalize(product.gender);
-      if (
-        (term === 'men' && productGender.includes('men')) ||
-        (term === 'women' && productGender.includes('women')) ||
-        (term === 'male' && productGender.includes('male')) ||
-        (term === 'female' && productGender.includes('female')) ||
-        (term === 'ladies' && productGender.includes('ladies')) ||
-        (term === 'gentlemen' && productGender.includes('gentlemen'))
-      ) {
-        score += 6;
-      }
-    }
-    
-    if (product.is_new) score += 2;
-    if (product.is_on_sale) score += 1;
-  });
-  
-  return score;
-};
-
-// Strict gender filter functions
-const isMenProduct = (product: any): boolean => {
-  const productGender = normalize(product.gender || '');
-  const productCategory = normalize(product.category || '');
-  const productName = normalize(product.name || '');
-  const productSubcategory = normalize(product.subcategory || '');
-  
-  // Check if it's EXACTLY for men (not containing women)
-  const menExactTerms = ['men', 'male', 'gentlemen', 'boy', 'boys'];
-  const womenExactTerms = ['women', 'female', 'ladies', 'girl', 'girls'];
-  
-  // Product gender should contain men term but NOT women term
-  const genderIsMen = menExactTerms.some(term => productGender === term);
-  const genderIsWomen = womenExactTerms.some(term => productGender === term);
-  
-  // Product category/name/subcategory check
-  const categoryHasMen = menExactTerms.some(term => 
-    productCategory === term || productCategory.includes(term)
-  );
-  const categoryHasWomen = womenExactTerms.some(term => 
-    productCategory === term || productCategory.includes(term)
-  );
-  
-  const nameHasMen = menExactTerms.some(term => 
-    productName.includes(term)
-  );
-  const nameHasWomen = womenExactTerms.some(term => 
-    productName.includes(term)
-  );
-  
-  const subcategoryHasMen = menExactTerms.some(term => 
-    productSubcategory.includes(term)
-  );
-  const subcategoryHasWomen = womenExactTerms.some(term => 
-    productSubcategory.includes(term)
-  );
-  
-  // Return true only if it has men characteristics AND no women characteristics
-  return (
-    (genderIsMen || categoryHasMen || nameHasMen || subcategoryHasMen) &&
-    !(genderIsWomen || categoryHasWomen || nameHasWomen || subcategoryHasWomen)
-  );
-};
-
-const isWomenProduct = (product: any): boolean => {
-  const productGender = normalize(product.gender || '');
-  const productCategory = normalize(product.category || '');
-  const productName = normalize(product.name || '');
-  const productSubcategory = normalize(product.subcategory || '');
-  
-  // Check if it's EXACTLY for women (not containing men)
-  const menExactTerms = ['men', 'male', 'gentlemen', 'boy', 'boys'];
-  const womenExactTerms = ['women', 'female', 'ladies', 'girl', 'girls'];
-  
-  // Product gender should contain women term but NOT men term
-  const genderIsWomen = womenExactTerms.some(term => productGender === term);
-  const genderIsMen = menExactTerms.some(term => productGender === term);
-  
-  // Product category/name/subcategory check
-  const categoryHasWomen = womenExactTerms.some(term => 
-    productCategory === term || productCategory.includes(term)
-  );
-  const categoryHasMen = menExactTerms.some(term => 
-    productCategory === term || productCategory.includes(term)
-  );
-  
-  const nameHasWomen = womenExactTerms.some(term => 
-    productName.includes(term)
-  );
-  const nameHasMen = menExactTerms.some(term => 
-    productName.includes(term)
-  );
-  
-  const subcategoryHasWomen = womenExactTerms.some(term => 
-    productSubcategory.includes(term)
-  );
-  const subcategoryHasMen = menExactTerms.some(term => 
-    productSubcategory.includes(term)
-  );
-  
-  // Return true only if it has women characteristics AND no men characteristics
-  return (
-    (genderIsWomen || categoryHasWomen || nameHasWomen || subcategoryHasWomen) &&
-    !(genderIsMen || categoryHasMen || nameHasMen || subcategoryHasMen)
-  );
-};
-
-// Function to fetch intelligent search results
+// Fixed search function with strict gender filtering
 const fetchIntelligentSearchResults = async (searchTerm: string) => {
   try {
     const term = normalize(searchTerm);
-    console.log("Searching for term:", term);
-
+    
+    const womenTerms = ['women', 'woman', 'female', 'ladies', 'girl'];
+    const menTerms = ['men', 'man', 'male', 'gentlemen', 'boy'];
+    
+    let strictGenderFilter = null;
+    
+    if (menTerms.includes(term) || menTerms.some(t => term === t)) {
+      strictGenderFilter = 'men';
+    } else if (womenTerms.includes(term) || womenTerms.some(t => term === t)) {
+      strictGenderFilter = 'women';
+    }
+    
+    const words = term.split(' ');
+    if (words.length > 1) {
+      if (words.some(w => menTerms.includes(w))) {
+        strictGenderFilter = 'men';
+      } else if (words.some(w => womenTerms.includes(w))) {
+        strictGenderFilter = 'women';
+      }
+    }
+    
     const searchVariations = getAllSearchVariations(searchTerm);
     
-    if (searchVariations.length === 0) {
-      return [];
-    }
+    let data;
+    let error;
     
-    const conditions = searchVariations.map(variation => 
-      `category.ilike.%${variation}%,name.ilike.%${variation}%,subcategory.ilike.%${variation}%,description.ilike.%${variation}%`
-    ).join(',');
-
-    const womenTerms = ['women', 'womens', 'woman', 'female', 'ladies', 'women\'s', 'girl', 'girls'];
-    const menTerms = ['men', 'mens', 'man', 'male', 'gentlemen', 'men\'s', 'boy', 'boys'];
-    
-    // For men search - STRICT FILTERING
-    if (menTerms.includes(term) || searchVariations.some(v => menTerms.includes(v))) {
-      console.log("Searching for MEN products only with STRICT filtering");
-      
-      const { data, error } = await supabase
-        .from("products")
-        .select("*")
-        .eq("is_active", true)
-        .limit(100);
-
-      if (error) {
-        console.error("Error fetching men products:", error);
-        return [];
-      }
-      
-      // Use strict men filter
-      const filteredData = (data || []).filter(product => {
-        return isMenProduct(product);
-      });
-      
-      console.log(`Found ${filteredData.length} men's products after strict filtering`);
-      console.log("Sample filtered men products:", filteredData.slice(0, 3).map(p => ({
-        name: p.name,
-        gender: p.gender,
-        category: p.category
-      })));
-      
-      return filteredData.slice(0, 30);
-    }
-    
-    // For women search - STRICT FILTERING
-    if (womenTerms.includes(term) || searchVariations.some(v => womenTerms.includes(v))) {
-      console.log("Searching for WOMEN products only with STRICT filtering");
-      
-      const { data, error } = await supabase
-        .from("products")
-        .select("*")
-        .eq("is_active", true)
-        .limit(100);
-
-      if (error) {
-        console.error("Error fetching women products:", error);
-        return [];
-      }
-      
-      // Use strict women filter
-      const filteredData = (data || []).filter(product => {
-        return isWomenProduct(product);
-      });
-      
-      console.log(`Found ${filteredData.length} women's products after strict filtering`);
-      console.log("Sample filtered women products:", filteredData.slice(0, 3).map(p => ({
-        name: p.name,
-        gender: p.gender,
-        category: p.category
-      })));
-      
-      return filteredData.slice(0, 30);
-    }
-    
-    console.log("Non-gender specific search, using general conditions");
-    const { data, error } = await supabase
+    const { data: allProducts, error: fetchError } = await supabase
       .from("products")
       .select("*")
       .eq("is_active", true)
-      .or(conditions)
-      .limit(30);
+      .limit(100);
+
+    data = allProducts;
+    error = fetchError;
 
     if (error) {
-      console.error("Error fetching search results:", error);
+      console.error("Error fetching products:", error);
       return [];
     }
     
-    return data || [];
+    if (!data) return [];
+    
+    let filteredResults = data;
+    
+    if (strictGenderFilter === 'men') {
+      filteredResults = data.filter(product => {
+        const isMen = isMenProduct(product);
+        const isNotWomen = !isWomenProduct(product);
+        return isMen && isNotWomen;
+      });
+    } else if (strictGenderFilter === 'women') {
+      filteredResults = data.filter(product => {
+        const isWomen = isWomenProduct(product);
+        const isNotMen = !isMenProduct(product);
+        return isWomen && isNotMen;
+      });
+    } else {
+      filteredResults = data.filter(product => {
+        return searchVariations.some(variation => {
+          const productCategory = normalize(product.category || '');
+          const productName = normalize(product.name || '');
+          const productSubcategory = normalize(product.subcategory || '');
+          const productDescription = normalize(product.description || '');
+          
+          return (
+            productCategory.includes(variation) ||
+            productName.includes(variation) ||
+            productSubcategory.includes(variation) ||
+            productDescription.includes(variation)
+          );
+        });
+      });
+    }
+    
+    return filteredResults.slice(0, 30);
   } catch (e) {
     console.error("Error in fetchIntelligentSearchResults:", e);
     return [];
   }
 };
 
-// Function to fetch popular categories for suggestions
-const fetchPopularCategories = async () => {
+// Function to fetch popular products for suggestions
+const fetchPopularProducts = async () => {
   try {
     const { data, error } = await supabase
       .from("products")
-      .select("category")
+      .select("*")
       .eq("is_active", true)
-      .limit(20);
+      .limit(12);
 
     if (error) {
-      console.error("Error fetching categories:", error);
+      console.error("Error fetching popular products:", error);
       return [];
     }
-
-    const categoryCounts: Record<string, number> = {};
-    data.forEach(product => {
-      if (product.category) {
-        categoryCounts[product.category] = (categoryCounts[product.category] || 0) + 1;
-      }
-    });
-
-    return Object.entries(categoryCounts)
-      .sort(([, a], [, b]) => b - a)
-      .slice(0, 5)
-      .map(([category]) => category);
+    
+    return data || [];
   } catch (error) {
-    console.error("Error in fetchPopularCategories:", error);
+    console.error("Error in fetchPopularProducts:", error);
     return [];
   }
 };
@@ -399,40 +471,67 @@ const fetchPopularCategories = async () => {
 interface SearchBarProps {
   isDesktop?: boolean;
   isMobile?: boolean;
-  isSearchOpen?: boolean;
-  setIsSearchOpen?: (open: boolean) => void;
   onSearch?: (value: string) => void;
 }
 
 const SearchBar: React.FC<SearchBarProps> = ({ 
   isDesktop = false, 
   isMobile = false,
-  isSearchOpen = false,
-  setIsSearchOpen,
   onSearch
 }) => {
   const [searchValue, setSearchValue] = useState("");
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isImageSearchOpen, setIsImageSearchOpen] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [popularProducts, setPopularProducts] = useState<any[]>([]);
   const [isLoadingResults, setIsLoadingResults] = useState(false);
-  const [popularCategories, setPopularCategories] = useState<string[]>([]);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   
   const searchRef = useRef<HTMLDivElement | null>(null);
+  const imageSearchRef = useRef<HTMLDivElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const navigate = useNavigate();
   const debouncedSearch = useRef<NodeJS.Timeout | null>(null);
 
-  // Load recent searches and popular categories on component mount
+  // Load recent searches and popular products on component mount
   useEffect(() => {
     setRecentSearches(getRecentSearches());
     
-    const loadPopularCategories = async () => {
-      const categories = await fetchPopularCategories();
-      setPopularCategories(categories);
+    const loadPopularProducts = async () => {
+      const products = await fetchPopularProducts();
+      const menProducts = products.filter(p => isMenProduct(p)).slice(0, 4);
+      const womenProducts = products.filter(p => isWomenProduct(p)).slice(0, 4);
+      const accessoryProducts = products.filter(p => isAccessoryProduct(p)).slice(0, 4);
+      
+      setPopularProducts([...menProducts, ...womenProducts, ...accessoryProducts]);
     };
     
-    loadPopularCategories();
+    loadPopularProducts();
   }, []);
+
+  // Close search when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+        setShowSuggestions(false);
+        if (isMobile) {
+          setIsSearchOpen(false);
+        }
+      }
+      if (imageSearchRef.current && !imageSearchRef.current.contains(event.target as Node)) {
+        setIsImageSearchOpen(false);
+        setSelectedImage(null);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isMobile]);
 
   // Search fetching
   useEffect(() => {
@@ -444,39 +543,15 @@ const SearchBar: React.FC<SearchBarProps> = ({
       setIsLoadingResults(true);
 
       debouncedSearch.current = setTimeout(async () => {
-        const term = normalize(searchValue);
         const results = await fetchIntelligentSearchResults(searchValue);
-
-        const womenTerms = ['women', 'womens', 'woman', 'female', 'ladies', 'women\'s', 'girl', 'girls'];
-        const menTerms = ['men', 'mens', 'man', 'male', 'gentlemen', 'men\'s', 'boy', 'boys'];
-        
-        let filteredResults = results;
-        
-        // Apply strict gender filtering for search suggestions
-        if (menTerms.includes(term)) {
-          console.log("Applying STRICT men filter for search suggestions");
-          filteredResults = results.filter(product => isMenProduct(product));
-          console.log(`After strict men filter: ${filteredResults.length} products`);
-        } else if (womenTerms.includes(term)) {
-          console.log("Applying STRICT women filter for search suggestions");
-          filteredResults = results.filter(product => isWomenProduct(product));
-          console.log(`After strict women filter: ${filteredResults.length} products`);
-        } else {
-          const variations = getAllSearchVariations(searchValue);
-          filteredResults = results.sort((a, b) =>
-            calculateRelevanceScore(b, variations) -
-            calculateRelevanceScore(a, variations)
-          );
-        }
-
-        console.log(`Final filtered results: ${filteredResults.length} products`);
-        setSearchResults(filteredResults);
+        setSearchResults(results);
         setIsLoadingResults(false);
         setShowSuggestions(true);
       }, 300);
     } else {
       setSearchResults([]);
       setIsLoadingResults(false);
+      setShowSuggestions(true);
     }
 
     return () => {
@@ -492,27 +567,50 @@ const SearchBar: React.FC<SearchBarProps> = ({
       return;
     }
 
-    // Save to recent searches
     saveToRecentSearches(finalValue);
     setRecentSearches(getRecentSearches());
 
-    // Direct category navigation
-    if (finalValue === "women" || finalValue === "woman") {
+    const womenTerms = ['women', 'womens', 'woman', 'female', 'ladies', 'women\'s', "woman's"];
+    const menTerms = ['men', 'mens', 'man', 'male', 'gentlemen', 'men\'s', "man's"];
+    const nightTerms = ['night', 'nightdress', 'nightwear', 'nightgown', 'nightie', 'pajama', 'pyjama', 'sleepwear'];
+    const sareeTerms = ['saree', 'sari', 'sarees'];
+    const lehengaTerms = ['lehenga', 'lehengas'];
+    const kurtiTerms = ['kurti', 'kurtis', 'kurta', 'kurtas'];
+    
+    if (nightTerms.some(term => finalValue.includes(term))) {
+      navigate("/products?search=night+dress");
+    } 
+    else if (sareeTerms.some(term => finalValue.includes(term))) {
+      navigate("/products?search=saree");
+    }
+    else if (lehengaTerms.some(term => finalValue.includes(term))) {
+      navigate("/products?search=lehenga");
+    }
+    else if (kurtiTerms.some(term => finalValue.includes(term))) {
+      navigate("/products?search=kurti");
+    }
+    else if (womenTerms.some(term => finalValue.includes(term))) {
       navigate("/products?category=women");
     } 
-    else if (finalValue === "men" || finalValue === "man") {
+    else if (menTerms.some(term => finalValue.includes(term))) {
       navigate("/products?category=men");
     } 
-    else if (finalValue === "kids") {
-      navigate("/products?category=kids");
+    else if (finalValue.includes("accessory") || finalValue.includes("jewel") || finalValue.includes("watch")) {
+      navigate("/products?category=accessories");
     } 
+    else if (finalValue.includes("new") || finalValue.includes("arrival")) {
+      navigate("/products?new=true");
+    }
+    else if (finalValue.includes("sale")) {
+      navigate("/products?sale=true");
+    }
     else {
       navigate(`/products?search=${encodeURIComponent(finalValue)}`);
     }
 
     setShowSuggestions(false);
     setSearchValue("");
-    setIsSearchOpen?.(false);
+    setIsSearchOpen(false);
     onSearch?.(finalValue);
   };
 
@@ -520,16 +618,38 @@ const SearchBar: React.FC<SearchBarProps> = ({
     navigate(`/product/${productId}`);
     setShowSuggestions(false);
     setSearchValue("");
-    setSearchResults([]);
-    setIsSearchOpen?.(false);
+    setIsSearchOpen(false);
   };
 
   const handleCategoryClick = (category: string) => {
-    navigate(`/products?category=${encodeURIComponent(category.toLowerCase())}`);
+    const categoryMap: Record<string, string> = {
+      "Today's Deals": "deals",
+      "Best Sellers": "best-sellers",
+      "New Arrivals": "new",
+      "Men's Collection": "men",
+      "Women's Collection": "women",
+      "Kids Fashion": "kids",
+      "Winter Wear": "winter",
+      "Summer Collection": "summer",
+      "Festive Special": "festive",
+      "Wedding Collection": "wedding"
+    };
+    
+    const routeCategory = categoryMap[category] || category.toLowerCase();
+    
+    if (routeCategory === 'deals') {
+      navigate("/products?sale=true");
+    } else if (routeCategory === 'best-sellers') {
+      navigate("/products?popular=true");
+    } else if (routeCategory === 'new') {
+      navigate("/products?new=true");
+    } else {
+      navigate(`/products?category=${encodeURIComponent(routeCategory)}`);
+    }
+    
     setShowSuggestions(false);
     setSearchValue("");
-    setSearchResults([]);
-    setIsSearchOpen?.(false);
+    setIsSearchOpen(false);
   };
 
   const handleClearRecentSearches = () => {
@@ -538,54 +658,351 @@ const SearchBar: React.FC<SearchBarProps> = ({
     }
   };
 
-  // Desktop search suggestions
-  const renderDesktopSearchSuggestions = () => {
+  const handleTrendingClick = (item: string) => {
+    setSearchValue(item);
+    setTimeout(() => handleSearch(item), 100);
+  };
+
+  // Image Search Functions
+  const handleTakePhoto = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleChooseFromGallery = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setIsUploading(true);
+      
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setSelectedImage(reader.result as string);
+        setIsUploading(false);
+        
+        setTimeout(() => {
+          navigate("/products?search=shoes");
+          setIsImageSearchOpen(false);
+          setSelectedImage(null);
+        }, 1000);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const closeImageSearch = () => {
+    setIsImageSearchOpen(false);
+    setSelectedImage(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  // Render image search modal (SIMPLIFIED - Only photo options)
+  const renderImageSearchModal = () => {
+    if (!isImageSearchOpen) return null;
+
     return (
-      <div className="absolute top-11 left-0 w-full bg-white border border-gray-200 rounded-md shadow-lg z-[9999] max-h-96 overflow-y-auto desktop-scroll">
-        {isLoadingResults ? (
-          <div className="p-4 text-center">
-            <p className="text-gray-600">Searching products...</p>
+      <div className="fixed inset-0 z-[10000] bg-black/50 flex items-center justify-center p-4">
+        <div ref={imageSearchRef} className="bg-white rounded-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
+          {/* Header */}
+          <div className="sticky top-0 bg-white border-b p-4 flex items-center justify-between">
+            <h2 className="font-heading text-xl font-semibold">
+              Search by Image
+            </h2>
+            <button
+              onClick={closeImageSearch}
+              className="p-2 hover:bg-gray-100 rounded-full"
+            >
+              <X size={20} />
+            </button>
           </div>
-        ) : searchResults.length > 0 || searchValue.trim().length >= 2 ? (
-          <div className="divide-y divide-gray-100">
-            {searchResults.length > 0 && (
-              <div className="p-3 bg-gray-50">
-                <p className="text-xs text-gray-600 mb-2 font-semibold">
-                  Products matching "{searchValue}" ({searchResults.length})
+
+          {/* Content - ONLY PHOTO UPLOAD SECTION */}
+          <div className="p-6">
+            <div className="text-center">
+              <h3 className="text-lg font-semibold mb-2">
+                Upload an image to search for similar products
+              </h3>
+              <p className="text-gray-600 mb-6">
+                Take a photo or choose from your gallery
+              </p>
+              
+              {!selectedImage ? (
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    <button
+                      onClick={handleTakePhoto}
+                      disabled={isUploading}
+                      className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-gray-300 rounded-xl hover:border-blue-500 hover:bg-blue-50 transition-colors group"
+                    >
+                      <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center mb-4 group-hover:bg-blue-200 transition-colors">
+                        <Camera size={28} className="text-blue-600" />
+                      </div>
+                      <span className="font-semibold text-gray-800">Take a photo</span>
+                    </button>
+                    
+                    <button
+                      onClick={handleChooseFromGallery}
+                      disabled={isUploading}
+                      className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-gray-300 rounded-xl hover:border-blue-500 hover:bg-blue-50 transition-colors group"
+                    >
+                      <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center mb-4 group-hover:bg-blue-200 transition-colors">
+                        <ImageIcon size={28} className="text-blue-600" />
+                      </div>
+                      <span className="font-semibold text-gray-800">Choose from gallery</span>
+                    </button>
+                  </div>
+
+                  {/* Hidden file input */}
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileSelect}
+                    accept="image/*"
+                    className="hidden"
+                    capture="environment"
+                  />
+                </>
+              ) : (
+                /* Image Preview */
+                <div>
+                  <h3 className="text-lg font-semibold mb-4">
+                    Searching similar products...
+                  </h3>
+                  <div className="relative mx-auto w-64 h-64 mb-6">
+                    <img
+                      src={selectedImage}
+                      alt="Selected"
+                      className="w-full h-full object-cover rounded-lg border"
+                    />
+                    {isUploading && (
+                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-lg">
+                        <div className="text-white">Processing image...</div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Cancel Button */}
+              <button
+                onClick={closeImageSearch}
+                className="w-full py-3 mt-4 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Render search suggestions - FASHION FOCUSED
+  const renderSearchSuggestions = () => {
+    return (
+      <div className={`${isMobile ? 'fixed inset-x-0 top-16 bottom-0' : 'absolute top-12 left-0 right-0'} bg-white border border-gray-200 rounded-lg shadow-2xl z-[9999] overflow-y-auto ${isMobile ? 'h-[calc(100vh-4rem)]' : 'max-h-[80vh]'}`}>
+        <div className="divide-y divide-gray-100">
+          {/* Search Header */}
+          {searchValue.trim().length === 0 && (
+            <div className="p-4" style={{ backgroundColor: '#E9E1D8' }}>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-semibold text-gray-800 flex items-center gap-2">
+                  <Sparkles size={18} className="text-blue-600" />
+                  Quick Fashion Categories
+                </h3>
+                <span className="text-xs bg-white px-2 py-1 rounded-full text-blue-600 font-medium">Explore</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {POPULAR_CATEGORIES.map((category, index) => (
+                  <button
+                    key={index}
+                    onClick={() => handleCategoryClick(category.name)}
+                    className={`flex flex-col items-center justify-center p-3 ${category.color} rounded-lg hover:shadow-md transition-all duration-200`}
+                  >
+                    <span className="text-2xl mb-1">{category.icon}</span>
+                    <span className="text-xs font-medium text-gray-700 text-center">{category.name}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Recent Searches Section */}
+          {recentSearches.length > 0 && searchValue.trim().length === 0 && (
+            <div className="p-4">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+                  <Clock size={16} className="text-gray-600" />
+                  Recent Searches
                 </p>
-                {searchResults.slice(0, 6).map((product) => (
+                <button
+                  onClick={handleClearRecentSearches}
+                  className="text-xs text-blue-600 hover:text-blue-800 font-medium hover:underline"
+                >
+                  Clear All
+                </button>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {recentSearches.map((search, index) => (
+                  <button
+                    key={index}
+                    onClick={() => handleTrendingClick(search)}
+                    className="flex items-center justify-between p-2 hover:bg-gray-50 rounded-lg transition-colors group border border-gray-100"
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
+                        <Clock size={12} className="text-gray-500" />
+                      </div>
+                      <span className="text-sm text-gray-700 truncate">{search}</span>
+                    </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const newRecent = recentSearches.filter((_, i) => i !== index);
+                        localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(newRecent));
+                        setRecentSearches(newRecent);
+                      }}
+                      className="p-1 hover:bg-gray-200 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X size={12} className="text-gray-400" />
+                    </button>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Trending Searches Section */}
+          {searchValue.trim().length === 0 && (
+            <div className="p-4">
+              <p className="text-sm font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                <Flame size={16} className="text-orange-500" />
+                Trending Fashion Searches
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {TRENDING_SEARCHES.map((item, index) => (
+                  <button
+                    key={index}
+                    onClick={() => handleTrendingClick(item)}
+                    className="px-3 py-1.5 text-xs bg-gradient-to-r from-orange-50 to-red-50 hover:from-orange-100 hover:to-red-100 text-gray-700 hover:text-gray-900 rounded-full transition-all duration-200 border border-orange-100 hover:border-orange-200 hover:shadow-sm"
+                  >
+                    {item}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Women's Fashion Section - UPDATED */}
+          {searchValue.trim().length === 0 && (
+            <div className="p-4" style={{ backgroundColor: '#E9E1D8' }}>
+              <p className="text-sm font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                <span className="text-pink-500">👗</span>
+                Women's Fashion
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                {WOMENS_CATEGORIES.map((category, index) => (
+                  <button
+                    key={index}
+                    onClick={() => navigate(`/products?search=${encodeURIComponent(category.toLowerCase())}`)}
+                    className="flex items-center justify-between p-2 hover:bg-pink-50 rounded-lg transition-colors group border border-pink-100 hover:border-pink-200"
+                  >
+                    <span className="text-sm text-gray-700">{category}</span>
+                    <ChevronRight size={14} className="text-gray-400 group-hover:text-pink-500" />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Men's Fashion Section */}
+          {searchValue.trim().length === 0 && (
+            <div className="p-4" style={{ backgroundColor: '#E9E1D8' }}>
+              <p className="text-sm font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                <span className="text-blue-500">👔</span>
+                Men's Fashion
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                {MENS_CATEGORIES.map((category, index) => (
+                  <button
+                    key={index}
+                    onClick={() => navigate(`/products?category=${encodeURIComponent(category.toLowerCase().replace(' & ', '-').replace(' ', '-'))}`)}
+                    className="flex items-center justify-between p-2 hover:bg-blue-50 rounded-lg transition-colors group border border-blue-100 hover:border-blue-200"
+                  >
+                    <span className="text-sm text-gray-700">{category}</span>
+                    <ChevronRight size={14} className="text-gray-400 group-hover:text-blue-500" />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Recommended Categories Section */}
+          {searchValue.trim().length === 0 && (
+            <div className="p-4">
+              <p className="text-sm font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                <Grid size={16} className="text-blue-500" />
+                Recommended Categories
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                {RECOMMENDED_CATEGORIES.map((category, index) => (
+                  <button
+                    key={index}
+                    onClick={() => handleCategoryClick(category)}
+                    className="flex items-center justify-between p-2 hover:bg-blue-50 rounded-lg transition-colors group border border-gray-100 hover:border-blue-200"
+                  >
+                    <span className="text-sm text-gray-700">{category}</span>
+                    <ChevronRight size={14} className="text-gray-400 group-hover:text-blue-500" />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Featured Products Section - SIMPLIFIED */}
+          {searchValue.trim().length === 0 && popularProducts.length > 0 && (
+            <div className="p-4" style={{ backgroundColor: '#E9E1D8' }}>
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+                  <Zap size={16} className="text-yellow-500" />
+                  Featured Fashion Products
+                </p>
+                <button
+                  onClick={() => navigate("/products?popular=true")}
+                  className="text-xs text-blue-600 hover:text-blue-800 font-medium hover:underline"
+                >
+                  View All
+                </button>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {popularProducts.map((product) => (
                   <button
                     key={product.id}
                     onClick={() => handleProductClick(product.id)}
-                    className="flex items-center gap-3 w-full text-left py-2 px-1 hover:bg-white rounded transition-colors"
+                    className="flex flex-col items-start p-3 hover:shadow-lg rounded-xl transition-all duration-300 border border-gray-200 hover:border-blue-300 bg-white hover:-translate-y-1"
                   >
-                    {product.images && product.images.length > 0 && (
-                      <div className="w-12 h-12 flex-shrink-0 rounded overflow-hidden border border-gray-200">
-                        <img 
-                          src={product.images[0]} 
-                          alt={product.name}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">
-                        {product.name}
-                      </p>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-gray-600 font-medium">
-                          {product.category}
-                        </span>
-                        {product.gender && (
-                          <>
-                            <span className="text-gray-400">•</span>
-                            <span className="text-xs text-gray-500 capitalize">
-                              {product.gender}
-                            </span>
-                          </>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2 mt-1">
+                    <div className="relative w-full h-28 mb-2 rounded-lg overflow-hidden border border-gray-200">
+                      <img 
+                        src={product.images?.[0] || '/placeholder.svg'} 
+                        alt={product.name}
+                        className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                      />
+                      {product.is_new && (
+                        <span className="absolute top-1 left-1 bg-green-500 text-white text-xs px-2 py-0.5 rounded">NEW</span>
+                      )}
+                      {product.is_on_sale && (
+                        <span className="absolute top-1 right-1 bg-red-500 text-white text-xs px-2 py-0.5 rounded">SALE</span>
+                      )}
+                    </div>
+                    <p className="text-xs font-medium text-gray-900 truncate w-full text-left mb-1">
+                      {product.name}
+                    </p>
+                    <div className="flex items-center justify-between w-full">
+                      <div className="flex items-baseline gap-1">
                         <p className="text-sm font-bold text-gray-900">
                           ₹{product.price}
                         </p>
@@ -594,7 +1011,75 @@ const SearchBar: React.FC<SearchBarProps> = ({
                             <span className="text-xs text-gray-500 line-through">
                               ₹{product.original_price}
                             </span>
-                            <span className="text-xs text-green-600 font-medium">
+                            <span className="text-xs text-green-600 font-medium bg-green-50 px-1 py-0.5 rounded">
+                              {Math.round((1 - product.price / product.original_price) * 100)}% off
+                            </span>
+                          </>
+                        )}
+                      </div>
+                      <button className="p-1 hover:bg-blue-100 rounded-full transition-colors">
+                        <Heart size={14} className="text-gray-400 hover:text-red-500" />
+                      </button>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Search Results Section */}
+          {searchResults.length > 0 && searchValue.trim().length >= 2 && (
+            <div className="p-4" style={{ backgroundColor: '#E9E1D8' }}>
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-sm font-semibold text-gray-800">
+                  <Search size={14} className="inline mr-2" />
+                  Results for "{searchValue}" ({searchResults.length})
+                </p>
+                <span className="text-xs bg-white px-2 py-1 rounded-full text-blue-600 font-medium border border-blue-200">
+                  Best Match
+                </span>
+              </div>
+              <div className="space-y-2">
+                {searchResults.slice(0, 5).map((product) => (
+                  <button
+                    key={product.id}
+                    onClick={() => handleProductClick(product.id)}
+                    className="flex items-center gap-3 w-full text-left p-3 hover:shadow-md rounded-xl transition-all duration-200 border border-gray-200 hover:border-blue-300 bg-white"
+                  >
+                    <div className="relative w-16 h-16 flex-shrink-0 rounded-lg overflow-hidden border border-gray-200">
+                      <img 
+                        src={product.images?.[0] || '/placeholder.svg'} 
+                        alt={product.name}
+                        className="w-full h-full object-cover"
+                      />
+                      {product.is_on_sale && (
+                        <span className="absolute top-0 right-0 bg-red-500 text-white text-xs px-1 py-0.5 rounded-bl">Sale</span>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">
+                        {product.name}
+                      </p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full">
+                          {product.category}
+                        </span>
+                        {product.gender && (
+                          <span className="text-xs px-2 py-0.5 bg-pink-100 text-pink-700 rounded-full capitalize">
+                            {product.gender}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 mt-2">
+                        <p className="text-base font-bold text-gray-900">
+                          ₹{product.price}
+                        </p>
+                        {product.original_price && product.original_price > product.price && (
+                          <>
+                            <span className="text-sm text-gray-500 line-through">
+                              ₹{product.original_price}
+                            </span>
+                            <span className="text-xs text-green-600 font-medium bg-green-50 px-1.5 py-0.5 rounded">
                               {Math.round((1 - product.price / product.original_price) * 100)}% off
                             </span>
                           </>
@@ -605,262 +1090,87 @@ const SearchBar: React.FC<SearchBarProps> = ({
                   </button>
                 ))}
               </div>
-            )}
-
-            {popularCategories.length > 0 && (
-              <div className="p-3">
-                <p className="text-xs text-gray-600 mb-2 font-semibold">
-                  Popular Categories
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {popularCategories.map((category) => (
-                    <button
-                      key={category}
-                      onClick={() => handleCategoryClick(category)}
-                      className="px-3 py-1.5 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 hover:text-gray-900 rounded-full transition-colors border border-gray-200"
-                    >
-                      {category}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div className="p-3">
-              <p className="text-xs text-gray-600 mb-2 font-semibold flex items-center gap-1">
-                <TrendingUp size={14} className="text-gray-600" /> Trending Searches
-              </p>
-              <div className="space-y-1">
-                {TRENDING_SEARCHES.map((item) => (
-                  <button
-                    key={item}
-                    onClick={() => {
-                      setSearchValue(item);
-                      setTimeout(() => handleSearch(item), 100);
-                    }}
-                    className="block w-full text-left text-sm py-1.5 px-1 text-gray-700 hover:text-gray-900 hover:bg-gray-50 rounded transition-colors"
-                  >
-                    {item}
-                  </button>
-                ))}
-              </div>
             </div>
-          </div>
-        ) : (
-          <div className="p-3">
-            <p className="text-xs text-gray-600 mb-2 font-semi-bold flex items-center gap-1">
-              <TrendingUp size={14} className="text-gray-600" /> Start typing to search products
-            </p>
-            <div className="space-y-1">
-              {popularCategories.slice(0, 5).map((category) => (
-                <button
-                  key={category}
-                  onClick={() => handleCategoryClick(category)}
-                  className="block w-full text-left text-sm py-1.5 px-1 text-gray-700 hover:text-gray-900 hover:bg-gray-50 rounded transition-colors"
-                >
-                  Browse {category} products
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-        
-        {searchValue.trim().length >= 2 && (
-          <div className="p-3 border-t border-gray-200 bg-gray-50">
-            <button
-              onClick={() => handleSearch()}
-              className="w-full py-2.5 bg-gray-800 text-white font-medium rounded hover:bg-gray-900 transition-colors text-sm flex items-center justify-center gap-2"
-            >
-              <Search size={16} />
-              View All Results for "{searchValue}"
-            </button>
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  // Mobile search suggestions
-  const renderMobileSearchSuggestions = (fixedPosition = false) => {
-    return (
-      <div className="w-full bg-white">
-        <div className="divide-y divide-gray-100">
-          {/* Show Recent + Trending By Default */}
-          {searchValue.trim().length === 0 && (
-            <>
-              {/* Recent Searches Section */}
-              {recentSearches.length > 0 && (
-                <div className="p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <p className="text-base font-semibold text-gray-800 flex items-center gap-2">
-                      <Clock size={16} className="text-gray-600" />
-                      Recent Searches
-                    </p>
-                    <button
-                      onClick={handleClearRecentSearches}
-                      className="text-sm text-blue-600 hover:text-blue-800"
-                    >
-                      Clear All
-                    </button>
-                  </div>
-                  <div className="space-y-2">
-                    {recentSearches.map((search, index) => (
-                      <button
-                        key={index}
-                        onClick={() => {
-                          setSearchValue(search);
-                          setTimeout(() => handleSearch(search), 100);
-                        }}
-                        className="flex items-center justify-between w-full text-left p-3 hover:bg-gray-50 rounded-lg transition-colors group"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
-                            <Clock size={16} className="text-gray-500" />
-                          </div>
-                          <span className="text-base text-gray-700">{search}</span>
-                        </div>
-                        <X size={16} className="text-gray-400 opacity-0 group-hover:opacity-100" />
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Trending Searches Section */}
-              <div className="p-4">
-                <p className="text-base font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                  <Flame size={16} className="text-orange-500" />
-                  Trending Searches
-                </p>
-                <div className="space-y-2">
-                  {TRENDING_SEARCHES.map((item, index) => (
-                    <button
-                      key={index}
-                      onClick={() => {
-                        setSearchValue(item);
-                        setTimeout(() => handleSearch(item), 100);
-                      }}
-                      className="flex items-center justify-between w-full text-left p-3 hover:bg-gray-50 rounded-lg transition-colors"
-                    >
-                      <span className="text-base text-gray-700">{item}</span>
-                      <ChevronRight size={16} className="text-gray-400" />
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Recommended Stores Section */}
-              <div className="p-4">
-                <p className="text-base font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                  <Store size={16} className="text-blue-500" />
-                  Recommended Stores For You
-                </p>
-                <div className="space-y-2">
-                  {RECOMMENDED_STORES.map((store, index) => (
-                    <button
-                      key={index}
-                      onClick={() => handleCategoryClick("stores")}
-                      className="flex items-center justify-between w-full text-left p-3 hover:bg-gray-50 rounded-lg transition-colors"
-                    >
-                      <span className="text-base text-gray-700">{store}</span>
-                      <ChevronRight size={16} className="text-gray-400" />
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Popular Categories Section */}
-              {popularCategories.length > 0 && (
-                <div className="p-4">
-                  <p className="text-base font-semibold text-gray-800 mb-3">
-                    Popular Categories
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {popularCategories.map((category) => (
-                      <button
-                        key={category}
-                        onClick={() => handleCategoryClick(category)}
-                        className="px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 hover:text-gray-900 rounded-lg transition-colors border border-gray-200"
-                      >
-                        {category}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </>
           )}
 
-          {/* Search Results Section */}
-          {searchResults.length > 0 && searchValue.trim().length >= 2 && (
-            <div className="p-4 bg-gray-50">
-              <p className="text-sm text-gray-600 mb-3 font-semibold">
-                Products matching "{searchValue}" ({searchResults.length})
-              </p>
-              {searchResults.slice(0, 5).map((product) => (
-                <button
-                  key={product.id}
-                  onClick={() => handleProductClick(product.id)}
-                  className="flex items-center gap-3 w-full text-left p-3 hover:bg-white rounded-lg transition-colors border border-gray-200 mb-2"
-                >
-                  {product.images && product.images.length > 0 && (
-                    <div className="w-14 h-14 flex-shrink-0 rounded overflow-hidden border border-gray-200">
-                      <img 
-                        src={product.images[0]} 
-                        alt={product.name}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-base font-medium text-gray-900 truncate">
-                      {product.name}
-                    </p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="text-sm text-gray-600 font-medium">
-                        {product.category}
-                      </span>
-                      {product.gender && (
-                        <>
-                          <span className="text-gray-400">•</span>
-                          <span className="text-sm text-gray-500 capitalize">
-                            {product.gender}
-                          </span>
-                        </>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 mt-1">
-                      <p className="text-base font-bold text-gray-900">
-                        ₹{product.price}
-                      </p>
-                      {product.original_price && product.original_price > product.price && (
-                        <>
-                          <span className="text-sm text-gray-500 line-through">
-                            ₹{product.original_price}
-                          </span>
-                          <span className="text-sm text-green-600 font-medium">
-                            {Math.round((1 - product.price / product.original_price) * 100)}% off
-                          </span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                  <ChevronRight size={18} className="text-gray-400 flex-shrink-0" />
+          {/* No Results */}
+          {searchResults.length === 0 && searchValue.trim().length >= 2 && !isLoadingResults && (
+            <div className="p-8 text-center" style={{ backgroundColor: '#E9E1D8' }}>
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center">
+                <Search size={24} className="text-gray-400" />
+              </div>
+              <p className="text-gray-600 mb-2 font-medium">No products found for "{searchValue}"</p>
+              <p className="text-sm text-gray-500 mb-4">Try searching with different keywords</p>
+              <div className="flex flex-wrap gap-2 justify-center">
+                <button onClick={() => setSearchValue("shoes")} className="px-4 py-2 text-sm bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors">
+                  Try "shoes"
                 </button>
-              ))}
+                <button onClick={() => setSearchValue("dresses")} className="px-4 py-2 text-sm bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors">
+                  Try "dresses"
+                </button>
+                <button onClick={() => setSearchValue("jeans")} className="px-4 py-2 text-sm bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors">
+                  Try "jeans"
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Loading */}
+          {isLoadingResults && (
+            <div className="p-8 text-center" style={{ backgroundColor: '#E9E1D8' }}>
+              <div className="inline-flex items-center gap-2">
+                <div className="w-4 h-4 bg-blue-600 rounded-full animate-bounce" />
+                <div className="w-4 h-4 bg-blue-600 rounded-full animate-bounce delay-100" />
+                <div className="w-4 h-4 bg-blue-600 rounded-full animate-bounce delay-200" />
+              </div>
+              <p className="text-gray-600 mt-4">Searching products...</p>
             </div>
           )}
 
           {/* Search All Button */}
-          {searchValue.trim().length >= 2 && (
-            <div className="p-4 border-t border-gray-200 bg-gray-50">
+          {searchValue.trim().length >= 2 && searchResults.length > 0 && (
+            <div className="p-4 border-t border-gray-200" style={{ backgroundColor: '#E9E1D8' }}>
               <button
                 onClick={() => handleSearch()}
-                className="w-full py-3 bg-gray-800 text-white font-medium rounded-lg hover:bg-gray-900 transition-colors text-base flex items-center justify-center gap-2"
+                className="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-medium rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 text-sm flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
               >
-                <Search size={18} />
-                View All Results for "{searchValue}"
+                <Search size={16} />
+                View All {searchResults.length} Results for "{searchValue}"
+                <ChevronRight size={16} />
               </button>
+              <p className="text-xs text-gray-600 text-center mt-2">
+                <Tag size={10} className="inline mr-1" />
+                Free shipping available on orders above ₹499
+              </p>
+            </div>
+          )}
+
+          {/* Footer Section */}
+          {searchValue.trim().length === 0 && (
+            <div className="p-4" style={{ backgroundColor: '#E9E1D8' }}>
+              <div className="flex items-center justify-between text-xs text-gray-500">
+                <div className="flex items-center gap-4">
+                  <span className="flex items-center gap-1">
+                    <ShoppingBag size={12} />
+                    Free Delivery
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Tag size={12} />
+                    Best Price
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Sparkles size={12} />
+                    Quality Assured
+                  </span>
+                </div>
+                <button 
+                  onClick={() => setIsImageSearchOpen(true)}
+                  className="text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                >
+                  <Camera size={12} />
+                  Search by Image
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -871,107 +1181,169 @@ const SearchBar: React.FC<SearchBarProps> = ({
   // Desktop Search Bar
   if (isDesktop) {
     return (
-      <div ref={searchRef} className="relative flex items-center mx-4 xl:mx-6">
-        <div className="flex items-center h-9 w-80 2xl:w-96 rounded-md bg-white/90 backdrop-blur-sm px-4 border border-gray-300">
-          <button 
-            onClick={() => handleSearch()}
-            className="hover:opacity-70 transition-opacity relative group"
-            aria-label="Search"
-          >
-            <Search size={16} className="text-gray-600" />
-          </button>
-
-          <span className="mx-2 h-5 w-px bg-gray-400" />
-
-          <input
-            type="text"
-            value={searchValue}
-            onChange={(e) => {
-              setSearchValue(e.target.value);
-            }}
-            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-            onFocus={() => setShowSuggestions(true)}
-            placeholder="Search For Products and More"
-            className="flex-1 bg-transparent text-sm focus:outline-none placeholder:text-gray-600 text-gray-900 font-medium"
-            aria-label="Search products"
-          />
-        </div>
-
-        {/* DESKTOP SEARCH SUGGESTIONS */}
-        {showSuggestions && renderDesktopSearchSuggestions()}
-      </div>
-    );
-  }
-
-  // Mobile Search Bar - Simplified (for header)
-  if (isMobile && !isSearchOpen) {
-    return (
-      <button
-        onClick={() => setIsSearchOpen?.(true)}
-        className="w-full flex items-center h-12 bg-white rounded-lg px-4 border border-gray-300 shadow-sm"
-      >
-        <Search size={20} className="text-gray-500" />
-        <span className="ml-3 text-sm text-gray-600 font-medium">
-          Search for products, brands and more
-        </span>
-      </button>
-    );
-  }
-
-  // Mobile Search Overlay
-  if (isMobile && isSearchOpen) {
-    return (
-      <div className="fixed inset-0 z-40 bg-white">
-        {/* Search Header */}
-        <div className="fixed top-0 left-0 right-0 z-50 bg-[#E9E1D8] border-b border-gray-300">
-          <div className="container mx-auto px-3 sm:px-4">
-            <div className="flex items-center gap-2 py-3">
-              <button
-                onClick={() => {
-                  setIsSearchOpen?.(false);
-                  setShowSuggestions(false);
-                  setSearchValue("");
-                }}
-                className="p-1.5 hover:bg-white/30 rounded-md transition-colors"
-                aria-label="Close search"
+      <>
+        <div className="flex items-center gap-2">
+          <div ref={searchRef} className="relative flex-1 max-w-2xl">
+            <div className="flex items-center h-12 w-full rounded-full bg-white px-6 border-2 border-transparent hover:border-blue-300 shadow-lg transition-all duration-300">
+              <button 
+                onClick={() => handleSearch()}
+                className="hover:opacity-70 transition-opacity"
+                aria-label="Search"
               >
-                <ArrowLeft size={20} className="text-gray-800" />
+                <Search size={20} className="text-gray-600" />
               </button>
+
+              <input
+                type="text"
+                value={searchValue}
+                onChange={(e) => {
+                  setSearchValue(e.target.value);
+                  if (e.target.value.trim().length > 0) {
+                    setShowSuggestions(true);
+                  }
+                }}
+                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                onFocus={() => setShowSuggestions(true)}
+                placeholder="Search for fashion, clothing, accessories and more..."
+                className="flex-1 h-full px-4 bg-transparent text-sm focus:outline-none placeholder:text-gray-500 text-gray-900 font-medium"
+                aria-label="Search products"
+              />
               
-              <div className="flex-1">
-                <div className="flex items-center h-12 bg-white rounded-lg px-4 border border-gray-300 shadow-sm">
-                  <Search size={20} className="text-gray-500" />
-                  <input
-                    type="text"
-                    value={searchValue}
-                    onChange={(e) => setSearchValue(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                    onFocus={() => setShowSuggestions(true)}
-                    placeholder="Search for products, brands and more"
-                    className="flex-1 h-full px-3 bg-transparent text-gray-900 focus:outline-none text-base placeholder:text-gray-500"
-                    autoFocus
-                  />
-                  {searchValue && (
-                    <button
-                      onClick={() => setSearchValue("")}
-                      className="p-1 hover:bg-gray-100 rounded-full"
-                      aria-label="Clear search"
-                    >
-                      <X size={18} className="text-gray-500" />
-                    </button>
-                  )}
+              {searchValue && (
+                <button
+                  onClick={() => setSearchValue("")}
+                  className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                  aria-label="Clear search"
+                >
+                  <X size={18} className="text-gray-500" />
+                </button>
+              )}
+              
+              <div className="h-6 w-px bg-gray-300 mx-2" />
+              
+              <button
+                onClick={() => setIsImageSearchOpen(true)}
+                className="flex items-center gap-2 px-4 py-1.5 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-full hover:from-blue-600 hover:to-indigo-700 transition-all duration-300 text-xs font-medium shadow-md hover:shadow-lg"
+              >
+                <Camera size={14} />
+                Image
+              </button>
+            </div>
+
+            {/* DESKTOP SEARCH SUGGESTIONS */}
+            {showSuggestions && renderSearchSuggestions()}
+          </div>
+        </div>
+        
+        {/* Image Search Modal */}
+        {renderImageSearchModal()}
+      </>
+    );
+  }
+
+  // Mobile Search Bar - FLEXIBLE LAYOUT
+  if (isMobile) {
+    if (isSearchOpen) {
+      return (
+        <div className="fixed inset-0 z-40 bg-white" ref={searchRef}>
+          {/* Search Header */}
+          <div className="fixed top-0 left-0 right-0 z-50" style={{ backgroundColor: '#E9E1D8' }}>
+            <div className="w-full px-2 sm:px-3">
+              <div className="flex items-center gap-2 py-3 w-full">
+                <button
+                  onClick={() => {
+                    setIsSearchOpen(false);
+                    setShowSuggestions(false);
+                    setSearchValue("");
+                  }}
+                  className="p-1.5 hover:bg-white/30 rounded-md transition-colors flex-shrink-0"
+                  aria-label="Close search"
+                >
+                  <ArrowLeft size={20} className="text-gray-800" />
+                </button>
+                
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center h-10 sm:h-12 bg-white rounded-full px-2 sm:px-3 border-2 border-blue-400 shadow-lg w-full">
+                    <Search size={18} className="text-blue-600 flex-shrink-0" />
+                    <input
+                      type="text"
+                      value={searchValue}
+                      onChange={(e) => {
+                        setSearchValue(e.target.value);
+                        if (e.target.value.trim().length > 0) {
+                          setShowSuggestions(true);
+                        }
+                      }}
+                      onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                      onFocus={() => setShowSuggestions(true)}
+                      placeholder="Search for fashion, clothing..."
+                      className="flex-1 h-full px-2 sm:px-3 bg-transparent text-gray-900 focus:outline-none text-sm placeholder:text-gray-500 min-w-0 truncate"
+                      autoFocus
+                    />
+                    {searchValue && (
+                      <button
+                        onClick={() => setSearchValue("")}
+                        className="p-1 hover:bg-gray-100 rounded-full flex-shrink-0"
+                        aria-label="Clear search"
+                      >
+                        <X size={16} className="text-gray-500" />
+                      </button>
+                    )}
+                  </div>
                 </div>
+                
+                {/* Image Search Button for Mobile - Always visible */}
+                <button
+                  onClick={() => {
+                    setIsSearchOpen(false);
+                    setIsImageSearchOpen(true);
+                  }}
+                  className="p-2 hover:bg-white/30 rounded-md transition-colors flex-shrink-0"
+                >
+                  <Camera size={20} className="text-gray-800" />
+                </button>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Search Content */}
-        <div className="pt-16 h-full overflow-y-auto">
-          {renderMobileSearchSuggestions(true)}
+          {/* Search Suggestions */}
+          <div className="pt-14 sm:pt-16">
+            {showSuggestions && renderSearchSuggestions()}
+          </div>
         </div>
-      </div>
-    );
+      );
+    } else {
+      return (
+        <>
+          <div className="w-full flex items-center gap-2 px-1">
+            {/* Main search container - Takes available space */}
+            <div className="flex-1 min-w-0">
+              <button
+                onClick={() => setIsSearchOpen(true)}
+                className="w-full flex items-center h-10 sm:h-12 bg-white rounded-full px-3 sm:px-4 border border-gray-300 shadow-sm hover:shadow-md transition-shadow"
+              >
+                <Search size={18} className="text-gray-500 flex-shrink-0" />
+                <span className="ml-2 text-sm text-gray-600 font-medium truncate">
+                  Search for fashion, clothing...
+                </span>
+              </button>
+            </div>
+            
+            {/* Image Search Button for Mobile - Always visible with proper sizing */}
+            <button
+              onClick={() => setIsImageSearchOpen(true)}
+              className="h-10 w-10 sm:h-12 sm:w-12 flex-shrink-0 flex items-center justify-center bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-full hover:from-blue-600 hover:to-indigo-700 transition-all duration-300 shadow-md hover:shadow-lg"
+              aria-label="Search by image"
+            >
+              <Camera size={18} className="sm:size-5" />
+            </button>
+          </div>
+          
+          {/* Image Search Modal for Mobile */}
+          {renderImageSearchModal()}
+        </>
+      );
+    }
   }
 
   return null;

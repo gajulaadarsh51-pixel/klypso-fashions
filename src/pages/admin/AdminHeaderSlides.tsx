@@ -15,6 +15,8 @@ import {
   Smartphone,
   Tablet,
   Monitor,
+  Upload,
+  Copy,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -81,6 +83,94 @@ const AdminHeaderSlides = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  // Function to convert Google Drive URL to direct image URL
+  const convertGoogleDriveUrl = (url: string): string => {
+    if (!url || !url.includes("drive.google.com")) {
+      return url;
+    }
+
+    try {
+      // Extract file ID from various Google Drive URL formats
+      let fileId = "";
+      
+      // Format 1: https://drive.google.com/file/d/1G-sR4hrAxpyVe71nRzbpfWDzDutevlR4/view?usp=sharing
+      const fileMatch = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+      if (fileMatch && fileMatch[1]) {
+        fileId = fileMatch[1];
+      }
+      
+      // Format 2: https://drive.google.com/open?id=1G-sR4hrAxpyVe71nRzbpfWDzDutevlR4
+      if (!fileId) {
+        const openMatch = url.match(/id=([a-zA-Z0-9_-]+)/);
+        if (openMatch && openMatch[1]) {
+          fileId = openMatch[1];
+        }
+      }
+      
+      // Format 3: Direct ID in URL
+      if (!fileId) {
+        const idMatch = url.match(/([a-zA-Z0-9_-]{25,})/);
+        if (idMatch && idMatch[1]) {
+          fileId = idMatch[1];
+        }
+      }
+
+      if (fileId) {
+        // Return direct image URL for Google Drive
+        return `https://lh3.googleusercontent.com/d/${fileId}=s0?authuser=0`;
+      }
+
+      return url;
+    } catch (error) {
+      console.error("Error converting Google Drive URL:", error);
+      return url;
+    }
+  };
+
+  // Function to handle image URL input with Google Drive conversion
+  const handleImageUrlChange = (url: string, type: 'desktop' | 'mobile' | 'tablet') => {
+    const convertedUrl = convertGoogleDriveUrl(url);
+    
+    if (type === 'desktop') {
+      setFormData({ ...formData, image_url: convertedUrl });
+    } else if (type === 'mobile') {
+      setFormData({ ...formData, mobile_image_url: convertedUrl });
+    } else if (type === 'tablet') {
+      setFormData({ ...formData, tablet_image_url: convertedUrl });
+    }
+  };
+
+  // Function to copy Google Drive upload instructions
+  const copyInstructions = () => {
+    const instructions = `How to upload images using Google Drive:
+
+1. Go to https://drive.google.com
+2. Click "New" → "File upload"
+3. Select your image file
+4. After upload, right-click the file
+5. Select "Get link" or "Share"
+6. Set link access to "Anyone with the link"
+7. Copy the link
+8. Paste it in the image URL field below
+
+The system will automatically convert it to a direct image URL.`;
+    
+    navigator.clipboard.writeText(instructions)
+      .then(() => {
+        toast({
+          title: "Instructions Copied",
+          description: "Paste in any text editor to see upload guide",
+        });
+      })
+      .catch(() => {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to copy instructions",
+        });
+      });
+  };
 
   useEffect(() => {
     loadSlides();
@@ -381,16 +471,6 @@ const AdminHeaderSlides = () => {
     }
   };
 
-  const handleImageUrlChange = (url: string, type: 'desktop' | 'mobile' | 'tablet') => {
-    if (type === 'desktop') {
-      setFormData({ ...formData, image_url: url });
-    } else if (type === 'mobile') {
-      setFormData({ ...formData, mobile_image_url: url });
-    } else if (type === 'tablet') {
-      setFormData({ ...formData, tablet_image_url: url });
-    }
-  };
-
   const renderImagePreview = (url: string, alt: string, size: string) => (
     <div className={`relative border rounded overflow-hidden ${size}`}>
       <img
@@ -418,9 +498,6 @@ const AdminHeaderSlides = () => {
         <div>
           <h1 className="text-2xl md:text-3xl font-bold">Header Slides</h1>
           <p className="text-gray-600">Manage autosliding banner slides</p>
-          <p className="text-sm text-blue-600 mt-1">
-            <strong>Important:</strong> For best mobile experience, upload different image sizes for each device
-          </p>
         </div>
         
         <Button onClick={handleAddNewClick}>
@@ -436,6 +513,31 @@ const AdminHeaderSlides = () => {
                 {editingSlide ? "Edit Slide" : "Create New Slide"}
               </DialogTitle>
             </DialogHeader>
+            
+            {/* Google Drive Upload Instructions */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+              <div className="flex items-start justify-between">
+                <div>
+                  <h4 className="font-medium text-blue-800 flex items-center gap-2">
+                    <Upload className="h-4 w-4" />
+                    How to upload images using Google Drive
+                  </h4>
+                  <p className="text-sm text-blue-600 mt-1">
+                    1. Upload image to Google Drive → 2. Get shareable link → 3. Paste link below
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={copyInstructions}
+                  className="text-blue-700 border-blue-300"
+                >
+                  <Copy className="h-3 w-3 mr-1" />
+                  Copy Guide
+                </Button>
+              </div>
+            </div>
+
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-4">
                 <div>
@@ -509,24 +611,29 @@ const AdminHeaderSlides = () => {
                           <Monitor className="h-4 w-4" />
                           Desktop Image URL *
                         </Label>
-                        <div className="flex gap-2">
-                          <Input
-                            id="image_url"
-                            value={formData.image_url}
-                            onChange={(e) => handleImageUrlChange(e.target.value, 'desktop')}
-                            placeholder="https://example.com/desktop-image.jpg"
-                            required={formData.slide_type !== "text_only"}
-                            className="flex-1"
-                          />
-                        </div>
-                        {formData.image_url && (
-                          <div className="mt-2">
-                            {renderImagePreview(formData.image_url, "Desktop preview", "w-full h-32")}
+                        <div className="flex flex-col gap-2">
+                          <div className="flex gap-2">
+                            <Input
+                              id="image_url"
+                              value={formData.image_url}
+                              onChange={(e) => handleImageUrlChange(e.target.value, 'desktop')}
+                              placeholder="https://drive.google.com/file/d/..."
+                              required={formData.slide_type !== "text_only"}
+                              className="flex-1"
+                            />
                           </div>
-                        )}
-                        <p className="text-xs text-gray-500">
-                          Recommended: 1920x800px (16:7 ratio)
-                        </p>
+                          {formData.image_url && (
+                            <div className="mt-2">
+                              {renderImagePreview(formData.image_url, "Desktop preview", "w-full h-32")}
+                            </div>
+                          )}
+                          <div className="text-xs text-gray-500 space-y-1">
+                            <p className="font-medium">Example Google Drive links:</p>
+                            <p className="text-green-600">✓ https://drive.google.com/file/d/1G-sR4hrAxpyVe71nRzbpfWDzDutevlR4/view</p>
+                            <p className="text-green-600">✓ https://drive.google.com/open?id=1G-sR4hrAxpyVe71nRzbpfWDzDutevlR4</p>
+                            <p className="mt-1"><strong>Required:</strong> 1920×800px (16:6.67 ratio)</p>
+                          </div>
+                        </div>
                       </div>
 
                       {/* Tablet Image */}
@@ -535,23 +642,25 @@ const AdminHeaderSlides = () => {
                           <Tablet className="h-4 w-4" />
                           Tablet Image URL (Optional)
                         </Label>
-                        <div className="flex gap-2">
-                          <Input
-                            id="tablet_image_url"
-                            value={formData.tablet_image_url}
-                            onChange={(e) => handleImageUrlChange(e.target.value, 'tablet')}
-                            placeholder="https://example.com/tablet-image.jpg"
-                            className="flex-1"
-                          />
-                        </div>
-                        {formData.tablet_image_url && (
-                          <div className="mt-2">
-                            {renderImagePreview(formData.tablet_image_url, "Tablet preview", "w-full h-32")}
+                        <div className="flex flex-col gap-2">
+                          <div className="flex gap-2">
+                            <Input
+                              id="tablet_image_url"
+                              value={formData.tablet_image_url}
+                              onChange={(e) => handleImageUrlChange(e.target.value, 'tablet')}
+                              placeholder="https://drive.google.com/file/d/..."
+                              className="flex-1"
+                            />
                           </div>
-                        )}
-                        <p className="text-xs text-gray-500">
-                          Recommended: 1024x600px (for tablets)
-                        </p>
+                          {formData.tablet_image_url && (
+                            <div className="mt-2">
+                              {renderImagePreview(formData.tablet_image_url, "Tablet preview", "w-full h-32")}
+                            </div>
+                          )}
+                          <p className="text-xs text-gray-500">
+                            Optional: 1024×427px (same 1920:800 ratio)
+                          </p>
+                        </div>
                       </div>
 
                       {/* Mobile Image */}
@@ -560,23 +669,25 @@ const AdminHeaderSlides = () => {
                           <Smartphone className="h-4 w-4" />
                           Mobile Image URL (Optional)
                         </Label>
-                        <div className="flex gap-2">
-                          <Input
-                            id="mobile_image_url"
-                            value={formData.mobile_image_url}
-                            onChange={(e) => handleImageUrlChange(e.target.value, 'mobile')}
-                            placeholder="https://example.com/mobile-image.jpg"
-                            className="flex-1"
-                          />
-                        </div>
-                        {formData.mobile_image_url && (
-                          <div className="mt-2">
-                            {renderImagePreview(formData.mobile_image_url, "Mobile preview", "w-full h-32")}
+                        <div className="flex flex-col gap-2">
+                          <div className="flex gap-2">
+                            <Input
+                              id="mobile_image_url"
+                              value={formData.mobile_image_url}
+                              onChange={(e) => handleImageUrlChange(e.target.value, 'mobile')}
+                              placeholder="https://drive.google.com/file/d/..."
+                              className="flex-1"
+                            />
                           </div>
-                        )}
-                        <p className="text-xs text-gray-500">
-                          Recommended: 600x800px (portrait)
-                        </p>
+                          {formData.mobile_image_url && (
+                            <div className="mt-2">
+                              {renderImagePreview(formData.mobile_image_url, "Mobile preview", "w-full h-32")}
+                            </div>
+                          )}
+                          <p className="text-xs text-gray-500">
+                            Optional: 600×250px (same 1920:800 ratio, portrait compatible)
+                          </p>
+                        </div>
                       </div>
                     </div>
 
