@@ -19,8 +19,11 @@ import {
   Grid,
   Heart,
   Zap,
+  AlertCircle,
+  CheckCircle,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useRecentlyViewed } from '@/hooks/useRecentlyViewed';
 
 // HELPERS
 const normalize = (v?: string) =>
@@ -489,12 +492,28 @@ const SearchBar: React.FC<SearchBarProps> = ({
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [cameraPermission, setCameraPermission] = useState<'prompt' | 'granted' | 'denied'>('prompt');
+  const [isMobileDevice, setIsMobileDevice] = useState(false);
   
   const searchRef = useRef<HTMLDivElement | null>(null);
   const imageSearchRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const cameraInputRef = useRef<HTMLInputElement | null>(null);
   const navigate = useNavigate();
   const debouncedSearch = useRef<NodeJS.Timeout | null>(null);
+  
+  // Recently viewed hook
+  const { addToRecentlyViewed } = useRecentlyViewed();
+
+  // Detect mobile device
+  useEffect(() => {
+    const checkMobile = () => {
+      const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
+      const isMobile = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent.toLowerCase());
+      setIsMobileDevice(isMobile);
+    };
+    checkMobile();
+  }, []);
 
   // Load recent searches and popular products on component mount
   useEffect(() => {
@@ -524,6 +543,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
       if (imageSearchRef.current && !imageSearchRef.current.contains(event.target as Node)) {
         setIsImageSearchOpen(false);
         setSelectedImage(null);
+        setCameraPermission('prompt');
       }
     };
 
@@ -615,6 +635,14 @@ const SearchBar: React.FC<SearchBarProps> = ({
   };
 
   const handleProductClick = (productId: string) => {
+    // Find the full product object from search results or popular products
+    const product = [...searchResults, ...popularProducts].find(p => p.id === productId);
+    
+    if (product) {
+      // Add to recently viewed
+      addToRecentlyViewed(product);
+    }
+    
     navigate(`/product/${productId}`);
     setShowSuggestions(false);
     setSearchValue("");
@@ -663,9 +691,45 @@ const SearchBar: React.FC<SearchBarProps> = ({
     setTimeout(() => handleSearch(item), 100);
   };
 
-  // Image Search Functions
-  const handleTakePhoto = () => {
-    fileInputRef.current?.click();
+  // Check camera permission
+  const checkCameraPermission = async () => {
+    try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        console.warn('Camera API not supported');
+        return false;
+      }
+      
+      // Try to get camera permission
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      
+      // Stop all tracks
+      stream.getTracks().forEach(track => track.stop());
+      
+      setCameraPermission('granted');
+      return true;
+    } catch (error: any) {
+      console.warn('Camera permission denied:', error);
+      
+      if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+        setCameraPermission('denied');
+      } else {
+        setCameraPermission('denied');
+      }
+      return false;
+    }
+  };
+
+  // Request camera permission for direct camera access
+  const handleTakePhoto = async () => {
+    const hasPermission = await checkCameraPermission();
+    
+    if (hasPermission) {
+      // Permission granted, open camera input
+      cameraInputRef.current?.click();
+    } else {
+      // Permission denied, show permission denied state
+      setCameraPermission('denied');
+    }
   };
 
   const handleChooseFromGallery = () => {
@@ -686,6 +750,28 @@ const SearchBar: React.FC<SearchBarProps> = ({
           navigate("/products?search=shoes");
           setIsImageSearchOpen(false);
           setSelectedImage(null);
+          setCameraPermission('prompt');
+        }, 1000);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleCameraCapture = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setIsUploading(true);
+      
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setSelectedImage(reader.result as string);
+        setIsUploading(false);
+        
+        setTimeout(() => {
+          navigate("/products?search=shoes");
+          setIsImageSearchOpen(false);
+          setSelectedImage(null);
+          setCameraPermission('prompt');
         }, 1000);
       };
       reader.readAsDataURL(file);
@@ -695,12 +781,87 @@ const SearchBar: React.FC<SearchBarProps> = ({
   const closeImageSearch = () => {
     setIsImageSearchOpen(false);
     setSelectedImage(null);
+    setCameraPermission('prompt');
+    
+    // Reset file inputs
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
+    if (cameraInputRef.current) {
+      cameraInputRef.current.value = '';
+    }
   };
 
-  // Render image search modal (SIMPLIFIED - Only photo options)
+  const openCameraSettings = () => {
+    if (isMobileDevice) {
+      // For mobile devices, we can't programmatically open settings
+      // Show instructions instead
+      alert('To enable camera access:\n\n1. Open your device Settings\n2. Find Browser/App settings\n3. Enable Camera permission');
+    } else {
+      // For desktop browsers
+      if (navigator.userAgent.includes('Chrome')) {
+        window.open('chrome://settings/content/camera');
+      } else if (navigator.userAgent.includes('Firefox')) {
+        window.open('about:preferences#privacy');
+      } else if (navigator.userAgent.includes('Safari')) {
+        alert('To enable camera in Safari:\n\n1. Open Safari Preferences\n2. Go to Websites tab\n3. Find Camera settings');
+      } else {
+        alert('Please check your browser settings to enable camera access.');
+      }
+    }
+  };
+
+  // Render camera permission section
+  const renderCameraPermissionSection = () => {
+    if (cameraPermission === 'denied') {
+      return (
+        <div className="p-4 text-center bg-red-50 border border-red-200 rounded-lg">
+          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-3" />
+          <h3 className="text-lg font-semibold text-red-700 mb-2">
+            Camera Access Denied
+          </h3>
+          <p className="text-gray-600 mb-4">
+            We need camera access to take photos. Please enable camera permission in your browser settings.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <button
+              onClick={openCameraSettings}
+              className="flex-1 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
+            >
+              Open Settings
+            </button>
+            <button
+              onClick={() => {
+                setCameraPermission('prompt');
+                fileInputRef.current?.click();
+              }}
+              className="flex-1 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              Choose from Gallery Instead
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    if (cameraPermission === 'granted') {
+      return (
+        <div className="p-4 text-center bg-green-50 border border-green-200 rounded-lg">
+          <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-3" />
+          <h3 className="text-lg font-semibold text-green-700 mb-2">
+            Camera Access Granted
+          </h3>
+          <p className="text-gray-600 mb-4">
+            Camera is ready to use. Click "Take a Photo" to use your camera.
+          </p>
+        </div>
+      );
+    }
+
+    return null;
+  };
+
+  // Render image search modal (with proper camera permission handling)
   const renderImageSearchModal = () => {
     if (!isImageSearchOpen) return null;
 
@@ -720,7 +881,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
             </button>
           </div>
 
-          {/* Content - ONLY PHOTO UPLOAD SECTION */}
+          {/* Content */}
           <div className="p-6">
             <div className="text-center">
               <h3 className="text-lg font-semibold mb-2">
@@ -730,40 +891,56 @@ const SearchBar: React.FC<SearchBarProps> = ({
                 Take a photo or choose from your gallery
               </p>
               
+              {/* Camera Permission Status */}
+              {renderCameraPermissionSection()}
+              
               {!selectedImage ? (
                 <>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                     <button
                       onClick={handleTakePhoto}
                       disabled={isUploading}
-                      className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-gray-300 rounded-xl hover:border-blue-500 hover:bg-blue-50 transition-colors group"
+                      className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-gray-300 rounded-xl hover:border-blue-500 hover:bg-blue-50 transition-colors group disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center mb-4 group-hover:bg-blue-200 transition-colors">
                         <Camera size={28} className="text-blue-600" />
                       </div>
                       <span className="font-semibold text-gray-800">Take a photo</span>
+                      <span className="text-xs text-gray-500 mt-1">
+                        {isMobileDevice ? 'Uses device camera' : 'Uses webcam'}
+                      </span>
                     </button>
                     
                     <button
                       onClick={handleChooseFromGallery}
                       disabled={isUploading}
-                      className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-gray-300 rounded-xl hover:border-blue-500 hover:bg-blue-50 transition-colors group"
+                      className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-gray-300 rounded-xl hover:border-blue-500 hover:bg-blue-50 transition-colors group disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center mb-4 group-hover:bg-blue-200 transition-colors">
                         <ImageIcon size={28} className="text-blue-600" />
                       </div>
                       <span className="font-semibold text-gray-800">Choose from gallery</span>
+                      <span className="text-xs text-gray-500 mt-1">
+                        Upload existing photo
+                      </span>
                     </button>
                   </div>
 
-                  {/* Hidden file input */}
+                  {/* Hidden file inputs */}
                   <input
                     type="file"
                     ref={fileInputRef}
                     onChange={handleFileSelect}
                     accept="image/*"
                     className="hidden"
+                  />
+                  <input
+                    type="file"
+                    ref={cameraInputRef}
+                    onChange={handleCameraCapture}
+                    accept="image/*"
                     capture="environment"
+                    className="hidden"
                   />
                 </>
               ) : (
@@ -780,10 +957,16 @@ const SearchBar: React.FC<SearchBarProps> = ({
                     />
                     {isUploading && (
                       <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-lg">
-                        <div className="text-white">Processing image...</div>
+                        <div className="flex flex-col items-center">
+                          <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin mb-2"></div>
+                          <div className="text-white">Processing image...</div>
+                        </div>
                       </div>
                     )}
                   </div>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Finding similar fashion items for you...
+                  </p>
                 </div>
               )}
 
@@ -963,7 +1146,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
             </div>
           )}
 
-          {/* Featured Products Section - SIMPLIFIED */}
+          {/* Featured Products Section - SIMPLIFIED WITH RECENTLY VIEWED TRACKING */}
           {searchValue.trim().length === 0 && popularProducts.length > 0 && (
             <div className="p-4" style={{ backgroundColor: '#E9E1D8' }}>
               <div className="flex items-center justify-between mb-4">
@@ -982,7 +1165,10 @@ const SearchBar: React.FC<SearchBarProps> = ({
                 {popularProducts.map((product) => (
                   <button
                     key={product.id}
-                    onClick={() => handleProductClick(product.id)}
+                    onClick={() => {
+                      addToRecentlyViewed(product);
+                      handleProductClick(product.id);
+                    }}
                     className="flex flex-col items-start p-3 hover:shadow-lg rounded-xl transition-all duration-300 border border-gray-200 hover:border-blue-300 bg-white hover:-translate-y-1"
                   >
                     <div className="relative w-full h-28 mb-2 rounded-lg overflow-hidden border border-gray-200">

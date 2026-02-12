@@ -9,15 +9,14 @@ import {
   X,
   Sliders,
   Grid,
-  MessageSquare, // First import
-  Gift
+  MessageSquare,
+  Gift,
+  TrendingUp // Add this import for Trending Slides
 } from "lucide-react";
 
 import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
-// REMOVE THIS DUPLICATE IMPORT:
-// import { MessageSquare } from "lucide-react";
 
 const navItems = [
   { title: "Dashboard", url: "/admin", icon: LayoutDashboard },
@@ -30,6 +29,8 @@ const navItems = [
   { title: "Home Categories", url: "/admin/home-categories", icon: Grid },
   { title: "Brands", url: "/admin/brands", icon: Grid },
   { title: "Festivals", url: "/admin/festivals", icon: Gift },
+  { title: "World of Desire", url: "/admin/world-of-desire", icon: Gift },
+  { title: "Trending Slides", url: "/admin/trending-slides", icon: TrendingUp }, // Added with unique icon
   { title: "Settings", url: "/admin/settings", icon: Settings },
 ];
 

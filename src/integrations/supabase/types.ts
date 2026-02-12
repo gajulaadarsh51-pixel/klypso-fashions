@@ -8,14 +8,11 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "14.1"
   }
   public: {
     Tables: {
-      // ✅ ADD these 2 new tables to your existing Tables object
       festivals: {
         Row: {
           id: string
@@ -76,7 +73,39 @@ export type Database = {
         }
         Relationships: []
       }
-      // ✅ YOUR EXISTING TABLES - KEEP THESE EXACTLY AS THEY ARE
+      world_of_desire: {
+        Row: {
+          id: string
+          title: string
+          image_url: string
+          link: string
+          position: number
+          is_active: boolean
+          offer: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          title: string
+          image_url: string
+          link: string
+          position?: number
+          is_active?: boolean
+          offer?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          title?: string
+          image_url?: string
+          link?: string
+          position?: number
+          is_active?: boolean
+          offer?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
       orders: {
         Row: {
           created_at: string
@@ -217,7 +246,7 @@ export type Database = {
           id?: string
           phone?: string | null
           updated_at?: string
-          user_id?: string
+          user_id: string
         }
         Relationships: []
       }
@@ -264,7 +293,6 @@ export type Database = {
   }
 }
 
-// ✅ KEEP ALL THE REST OF YOUR EXISTING CODE BELOW - DON'T CHANGE ANYTHING
 type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
 
 type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]

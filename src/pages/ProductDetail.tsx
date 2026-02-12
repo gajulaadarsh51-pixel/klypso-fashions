@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Minus, Plus, ChevronLeft, Heart, Share2, Check, Loader2, ShoppingBag, Ruler, Facebook, Twitter, Mail, Copy, MessageCircle } from 'lucide-react';
 import Header from '@/components/Header';
@@ -10,6 +10,7 @@ import { useCart } from '@/contexts/CartContext';
 import { useToast } from '@/hooks/use-toast';
 import { useWishlist } from '@/contexts/WishlistContext';
 import ProductReviews from "@/components/ProductReviews";
+import { useRecentlyViewed } from '@/hooks/useRecentlyViewed';
 
 const ProductDetail = () => {
   const { id } = useParams();
@@ -17,6 +18,7 @@ const ProductDetail = () => {
   const { addToCart } = useCart();
   const { toast } = useToast();
   const { isInWishlist, toggleWishlist } = useWishlist();
+  const { addToRecentlyViewed } = useRecentlyViewed();
 
   const { data: product, isLoading } = useProduct(id || '');
   const { data: allProducts = [] } = useProducts();
@@ -27,6 +29,13 @@ const ProductDetail = () => {
   const [quantity, setQuantity] = useState(1);
   const [isWishlistLoading, setIsWishlistLoading] = useState(false);
   const [showShareMenu, setShowShareMenu] = useState(false);
+
+  // Add to recently viewed when product is loaded
+  useEffect(() => {
+    if (product) {
+      addToRecentlyViewed(product);
+    }
+  }, [product, addToRecentlyViewed]);
 
   if (isLoading) {
     return (

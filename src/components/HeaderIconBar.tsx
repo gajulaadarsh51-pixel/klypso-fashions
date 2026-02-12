@@ -299,6 +299,10 @@ const HeaderIconBar = ({ onIconClick, isScrolled = false }: HeaderIconBarProps) 
                 <div 
                   ref={containerRef}
                   className="flex gap-4 overflow-x-auto no-scrollbar scroll-smooth"
+                  style={{
+                    scrollbarWidth: 'none',
+                    msOverflowStyle: 'none',
+                  }}
                 >
                   {icons.map((icon) => (
                     <button
@@ -343,6 +347,8 @@ const HeaderIconBar = ({ onIconClick, isScrolled = false }: HeaderIconBarProps) 
                 className="flex gap-5 overflow-x-auto py-2 no-scrollbar relative scrollbar-hide scroll-smooth"
                 style={{
                   WebkitOverflowScrolling: 'touch',
+                  scrollbarWidth: 'none',
+                  msOverflowStyle: 'none',
                 }}
               >
                 {icons.map((icon) => {

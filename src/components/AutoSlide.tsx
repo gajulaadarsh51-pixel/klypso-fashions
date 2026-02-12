@@ -32,6 +32,7 @@ const AutoSlide = () => {
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const touchStartX = useRef(0);
   const touchEndX = useRef(0);
+  const progressRef = useRef<HTMLDivElement>(null);
 
   // Update window width on resize
   useEffect(() => {
@@ -70,9 +71,17 @@ const AutoSlide = () => {
     }
   };
 
-  // Auto slide timer
+  // Auto slide timer with progress bar reset
   useEffect(() => {
     if (slides.length <= 1) return;
+    
+    // Reset progress bar animation
+    if (progressRef.current) {
+      progressRef.current.style.animation = 'none';
+      void progressRef.current.offsetWidth; // Trigger reflow
+      progressRef.current.style.animation = `progress ${SLIDE_INTERVAL}ms linear`;
+    }
+    
     startTimer();
     return stopTimer;
   }, [slides.length, currentIndex]);
@@ -168,9 +177,9 @@ const AutoSlide = () => {
 
   return (
     <div className="w-full overflow-hidden relative">
-      {/* Container with fixed aspect ratio */}
+      {/* Container with fixed aspect ratio and curved edges */}
       <div 
-        className="relative w-full h-0 pb-[41.67%]" // 800/1920 = 41.67%
+        className="relative w-full h-0 pb-[41.67%] rounded-xl overflow-hidden"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
@@ -188,8 +197,8 @@ const AutoSlide = () => {
               className={`relative min-w-full h-full ${slide.button_link ? 'cursor-pointer' : ''}`}
               onClick={() => handleSlideClick(slide)}
             >
-              {/* Image container with object-fit cover */}
-              <div className="absolute inset-0">
+              {/* Image container with object-fit cover and curved edges */}
+              <div className="absolute inset-0 rounded-xl overflow-hidden">
                 <img
                   src={getImageUrl(slide)}
                   alt={slide.title}
@@ -273,31 +282,34 @@ const AutoSlide = () => {
           </>
         )}
 
-        {/* Dots indicator - Mobile visible */}
+        {/* Progress bar indicator - Replaces dots */}
         {slides.length > 1 && (
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2">
-            {slides.map((_, index) => (
-              <button
-                key={index}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setCurrentIndex(index);
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20">
+            <div className="relative h-[3px] w-[120px] sm:w-[160px] bg-white/30 rounded-full overflow-hidden">
+              <div
+                ref={progressRef}
+                className="absolute top-0 left-0 h-full w-full bg-white rounded-full"
+                style={{
+                  animation: `progress ${SLIDE_INTERVAL}ms linear`,
+                  transformOrigin: 'left center'
                 }}
-                className={`w-2 h-2 rounded-full transition-all ${
-                  index === currentIndex 
-                    ? 'bg-white w-4' 
-                    : 'bg-white/50 hover:bg-white/80'
-                }`}
-                aria-label={`Go to slide ${index + 1}`}
               />
-            ))}
+            </div>
           </div>
         )}
-
-        
       </div>
 
-     
+      {/* Progress bar animation */}
+      <style>{`
+        @keyframes progress {
+          0% {
+            transform: scaleX(0);
+          }
+          100% {
+            transform: scaleX(1);
+          }
+        }
+      `}</style>
     </div>
   );
 };
