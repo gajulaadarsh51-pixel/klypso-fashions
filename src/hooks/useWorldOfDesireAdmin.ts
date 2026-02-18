@@ -11,43 +11,92 @@ export const useWorldOfDesireAdmin = () => {
       const { data, error } = await supabase
         .from("world_of_desire")
         .select("*")
-        .order("position", { ascending: true });
+        .order("position", { ascending: true, nullsFirst: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error fetching world of desire:", error);
+        throw error;
+      }
       return data ?? [];
     },
   });
 
   const create = useMutation({
     mutationFn: async (payload: any) => {
-      const { error } = await supabase
+      console.log("Creating new world of desire item with payload:", payload);
+      
+      const { data, error } = await supabase
         .from("world_of_desire")
-        .insert(payload);
-      if (error) throw error;
+        .insert([payload])
+        .select();
+
+      if (error) {
+        console.error("Supabase insert error:", error);
+        throw error;
+      }
+      
+      console.log("Successfully created:", data);
+      return data;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-world-of-desire"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-world-of-desire"] });
+      qc.invalidateQueries({ queryKey: ["world-of-desire"] });
+    },
+    onError: (error) => {
+      console.error("Create mutation error:", error);
+    }
   });
 
   const update = useMutation({
     mutationFn: async ({ id, ...payload }: any) => {
-      const { error } = await supabase
+      console.log("Updating item:", id, payload);
+      
+      const { data, error } = await supabase
         .from("world_of_desire")
         .update(payload)
-        .eq("id", id);
-      if (error) throw error;
+        .eq("id", id)
+        .select();
+
+      if (error) {
+        console.error("Supabase update error:", error);
+        throw error;
+      }
+      
+      console.log("Successfully updated:", data);
+      return data;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-world-of-desire"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-world-of-desire"] });
+      qc.invalidateQueries({ queryKey: ["world-of-desire"] });
+    },
+    onError: (error) => {
+      console.error("Update mutation error:", error);
+    }
   });
 
   const remove = useMutation({
     mutationFn: async (id: string) => {
+      console.log("Deleting item:", id);
+      
       const { error } = await supabase
         .from("world_of_desire")
         .delete()
         .eq("id", id);
-      if (error) throw error;
+
+      if (error) {
+        console.error("Supabase delete error:", error);
+        throw error;
+      }
+      
+      console.log("Successfully deleted:", id);
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-world-of-desire"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-world-of-desire"] });
+      qc.invalidateQueries({ queryKey: ["world-of-desire"] });
+    },
+    onError: (error) => {
+      console.error("Delete mutation error:", error);
+    }
   });
 
   return { list, create, update, remove };

@@ -21,6 +21,9 @@ const BottomNavigation = () => {
 
   // 🚫 Hide bottom nav on admin pages
   if (location.pathname.startsWith("/admin")) return null;
+  
+  // 🚫 Hide bottom nav on product detail pages
+  if (location.pathname.startsWith("/product/")) return null;
 
   // State to track active tab
   const [activeTab, setActiveTab] = useState<Tab>("home");
@@ -143,9 +146,7 @@ const BottomNavigation = () => {
               setIsAccountDrawerOpen(false);
               setActiveTab("orders");
             }}
-            className={({ isActive }) => `relative flex flex-1 items-center justify-center h-full group ${
-              activeTab === "orders" ? "" : ""
-            }`}
+            className="relative flex flex-1 items-center justify-center h-full group"
           >
             <div className={`z-10 transition-all duration-300 flex flex-col items-center ${
               activeTab === "orders" ? "text-[#E9E1D8]" : "text-gray-400 group-hover:text-[#E9E1D8]"

@@ -36,6 +36,17 @@ interface Address {
   created_at?: string;
 }
 
+interface Profile {
+  id: string;
+  user_id: string;
+  full_name: string | null;
+  email: string | null;
+  phone: string | null;
+  avatar_url: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
 type Mode = "view" | "edit-profile" | "addresses";
 
 type AvatarType = "man" | "woman" | "kid" | "default";
@@ -265,6 +276,7 @@ const AccountProfile = () => {
 
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
   const [avatar, setAvatar] = useState<AvatarType>("default");
 
   const [addresses, setAddresses] = useState<Address[]>([]);
@@ -297,19 +309,35 @@ const AccountProfile = () => {
   const loadProfile = async () => {
     if (!user) return;
 
+    // Query by user_id (your schema uses user_id as the foreign key)
     const { data, error } = await supabase
       .from("profiles")
-      .select("full_name, phone, avatar_type")
+      .select("*")
       .eq("user_id", user.id)
-      .single();
+      .maybeSingle();
 
     if (!error && data) {
       setName(data.full_name || "");
       setPhone(data.phone || "");
-      setAvatar((data.avatar_type as AvatarType) || "default");
+      setEmail(data.email || "");
+      
+      // Load avatar type from avatar_url
+      if (data.avatar_url) {
+        // Check if the stored value is one of our avatar types
+        const savedAvatar = data.avatar_url as AvatarType;
+        if (savedAvatar === "man" || savedAvatar === "woman" || savedAvatar === "kid" || savedAvatar === "default") {
+          setAvatar(savedAvatar);
+        } else {
+          setAvatar("default");
+        }
+      } else {
+        setAvatar("default");
+      }
     } else {
+      // Use metadata from auth user
       setName(user.user_metadata?.full_name || "");
       setPhone(user.user_metadata?.phone || "");
+      setEmail(user.email || "");
       setAvatar("default");
     }
   };
@@ -348,6 +376,7 @@ const AccountProfile = () => {
     try {
       setSavingProfile(true);
 
+      // Update auth metadata
       const { error: authError } = await supabase.auth.updateUser({
         data: {
           full_name: name,
@@ -357,21 +386,56 @@ const AccountProfile = () => {
 
       if (authError) throw authError;
 
-      const { error: dbError } = await supabase
+      // Check if profile exists
+      const { data: existingProfile } = await supabase
         .from("profiles")
-        .upsert({
-          user_id: user.id,
-          full_name: name,
-          phone: phone,
-          avatar_type: avatar,
-          updated_at: new Date().toISOString(),
-        });
+        .select("id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      let dbError;
+
+      if (existingProfile) {
+        // Update existing profile
+        const { error } = await supabase
+          .from("profiles")
+          .update({
+            full_name: name,
+            phone: phone,
+            email: email || user.email,
+            avatar_url: avatar, // Save avatar type to avatar_url
+            updated_at: new Date().toISOString(),
+          })
+          .eq("user_id", user.id);
+        
+        dbError = error;
+      } else {
+        // Insert new profile
+        const { error } = await supabase
+          .from("profiles")
+          .insert({
+            user_id: user.id,
+            id: crypto.randomUUID(), // Generate a UUID for id
+            full_name: name,
+            phone: phone,
+            email: email || user.email,
+            avatar_url: avatar, // Save avatar type to avatar_url
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          });
+        
+        dbError = error;
+      }
 
       if (dbError) throw dbError;
 
       toast.success("Profile updated successfully");
       setMode("view");
+      
+      // Reload profile to show updated avatar
+      await loadProfile();
     } catch (err: any) {
+      console.error("Error saving profile:", err);
       toast.error(err.message || "Failed to update profile");
     } finally {
       setSavingProfile(false);
@@ -472,16 +536,14 @@ const AccountProfile = () => {
         if (resetError) throw resetError;
       }
 
-      const { data, error } = editingAddress 
+      const { error } = editingAddress 
         ? await supabase
             .from("shipping_addresses")
             .update(payload)
             .eq("id", editingAddress.id)
-            .select()
         : await supabase
             .from("shipping_addresses")
-            .insert([payload])
-            .select();
+            .insert([payload]);
 
       if (error) {
         console.error("Supabase error:", error);
@@ -584,16 +646,10 @@ const AccountProfile = () => {
               <p className="font-bold text-xl bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent">
                 {name || "User"}
               </p>
-              <p className="text-sm text-muted-foreground">
+              {/* FIXED: Changed from <p> to <span> to avoid invalid HTML nesting */}
+              <span className="block text-sm text-muted-foreground">
                 {user?.email || "Active account"}
-              </p>
-              <button
-                onClick={() => setShowAvatarSelector(true)}
-                className="mt-4 text-sm text-primary hover:text-primary/80 transition-colors flex items-center gap-2 mx-auto px-4 py-2 rounded-full border border-primary/20 hover:border-primary/40 bg-gradient-to-r from-primary/5 to-primary/10 hover:from-primary/10 hover:to-primary/15"
-              >
-                <Edit size={14} />
-                Change Avatar
-              </button>
+              </span>
             </div>
           </div>
 
@@ -928,10 +984,11 @@ const AccountProfile = () => {
                           <Phone size={14} className="text-blue-500/60" />
                           {addr.phone}
                         </p>
-                        <p className="text-muted-foreground flex items-center gap-2">
+                        {/* FIXED: Changed from <p> to <div> because it contains a <div> */}
+                        <div className="text-muted-foreground flex items-center gap-2">
                           <div className="w-3 h-3 rounded-full bg-gradient-to-r from-primary to-purple-600" />
                           {addr.email}
-                        </p>
+                        </div>
                       </div>
                     </div>
 

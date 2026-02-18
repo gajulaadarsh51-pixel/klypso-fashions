@@ -11,7 +11,8 @@ import {
   Grid,
   MessageSquare,
   Gift,
-  TrendingUp // Add this import for Trending Slides
+  TrendingUp,
+  Sparkles // Add this import
 } from "lucide-react";
 
 import { NavLink } from "@/components/NavLink";
@@ -30,7 +31,8 @@ const navItems = [
   { title: "Brands", url: "/admin/brands", icon: Grid },
   { title: "Festivals", url: "/admin/festivals", icon: Gift },
   { title: "World of Desire", url: "/admin/world-of-desire", icon: Gift },
-  { title: "Trending Slides", url: "/admin/trending-slides", icon: TrendingUp }, // Added with unique icon
+  { title: "Trending Slides", url: "/admin/trending-slides", icon: TrendingUp },
+  { title: "Fashion Forecast", url: "/admin/fashion-forecast", icon: Sparkles }, // Now Sparkles is imported
   { title: "Settings", url: "/admin/settings", icon: Settings },
 ];
 

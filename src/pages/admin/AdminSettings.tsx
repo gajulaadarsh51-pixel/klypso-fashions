@@ -4,11 +4,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useSettings } from '@/contexts/SettingsContext';
+import { useToast } from '@/hooks/use-toast';
 
 const AdminSettings = () => {
-  const { settings, saveSettings, getStoreNameParts } = useSettings();
+  const { settings, saveSettings, getStoreNameParts, loading } = useSettings();
   const [localSettings, setLocalSettings] = useState(settings);
+  const [saving, setSaving] = useState(false);
   const nameParts = getStoreNameParts();
+  const { toast } = useToast();
 
   // Update local settings when context settings change
   useEffect(() => {
@@ -17,11 +20,36 @@ const AdminSettings = () => {
 
   const handleSave = async () => {
     try {
+      setSaving(true);
       await saveSettings(localSettings);
-    } catch (error) {
+      // Success toast is already shown in context
+    } catch (error: any) {
       console.error('Failed to save settings:', error);
+      // Error toast is already shown in context
+    } finally {
+      setSaving(false);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="space-y-8">
+        <div>
+          <h1 className="font-heading text-3xl font-bold">Settings</h1>
+          <p className="text-muted-foreground mt-1">Loading settings...</p>
+        </div>
+        <div className="max-w-2xl space-y-8">
+          <div className="bg-background border rounded-lg p-6">
+            <div className="animate-pulse space-y-4">
+              <div className="h-8 bg-gray-200 rounded w-1/3"></div>
+              <div className="h-10 bg-gray-200 rounded"></div>
+              <div className="h-10 bg-gray-200 rounded"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
@@ -39,7 +67,7 @@ const AdminSettings = () => {
               <Label htmlFor="storeName">Store Name</Label>
               <Input
                 id="storeName"
-                value={localSettings.store_name}
+                value={localSettings.store_name || ''}
                 onChange={(e) => setLocalSettings((prev) => ({ ...prev, store_name: e.target.value }))}
               />
               <p className="text-sm text-muted-foreground mt-1">
@@ -57,7 +85,7 @@ const AdminSettings = () => {
               <Input
                 id="storeEmail"
                 type="email"
-                value={localSettings.store_email}
+                value={localSettings.store_email || ''}
                 onChange={(e) => setLocalSettings((prev) => ({ ...prev, store_email: e.target.value }))}
               />
             </div>
@@ -65,7 +93,7 @@ const AdminSettings = () => {
               <Label htmlFor="storePhone">Contact Phone</Label>
               <Input
                 id="storePhone"
-                value={localSettings.store_phone}
+                value={localSettings.store_phone || ''}
                 onChange={(e) => setLocalSettings((prev) => ({ ...prev, store_phone: e.target.value }))}
               />
             </div>
@@ -78,14 +106,14 @@ const AdminSettings = () => {
           <div className="space-y-4">
             <div>
               <Label htmlFor="firstNameColor">
-                First Part Color (e.g., "Klypso")
+                First Part Color
               </Label>
               <div className="flex items-center gap-4 mt-2">
                 <div 
                   className="w-12 h-12 rounded-md border flex items-center justify-center"
                   style={{ backgroundColor: localSettings.first_name_color }}
                 >
-                  <span className="text-white font-bold">{nameParts.firstPart}</span>
+                  <span className="text-white font-bold drop-shadow-md">{nameParts.firstPart}</span>
                 </div>
                 <div className="flex flex-col gap-2">
                   <Input
@@ -107,14 +135,14 @@ const AdminSettings = () => {
             </div>
             <div>
               <Label htmlFor="secondNameColor">
-                Second Part Color (e.g., "Fashions")
+                Second Part Color
               </Label>
               <div className="flex items-center gap-4 mt-2">
                 <div 
                   className="w-12 h-12 rounded-md border flex items-center justify-center"
                   style={{ backgroundColor: localSettings.second_name_color }}
                 >
-                  <span className="text-white font-bold">{nameParts.secondPart}</span>
+                  <span className="text-white font-bold drop-shadow-md">{nameParts.secondPart}</span>
                 </div>
                 <div className="flex flex-col gap-2">
                   <Input
@@ -213,8 +241,12 @@ const AdminSettings = () => {
           </div>
         </div>
 
-        <Button onClick={handleSave} className="bg-gold hover:bg-gold/90 text-primary">
-          Save Settings
+        <Button 
+          onClick={handleSave} 
+          disabled={saving}
+          className="bg-gold hover:bg-gold/90 text-primary"
+        >
+          {saving ? 'Saving...' : 'Save Settings'}
         </Button>
       </div>
     </div>

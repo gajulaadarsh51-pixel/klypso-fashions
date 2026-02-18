@@ -94,11 +94,14 @@ const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>, originalUrl
 const HeaderIconBar = ({ onIconClick, isScrolled = false }: HeaderIconBarProps) => {
   const [icons, setIcons] = useState<IconItem[]>([]);
   const [selectedIconId, setSelectedIconId] = useState<string | null>(null);
+  const [scrollProgress, setScrollProgress] = useState(0);
+  
   const navigate = useNavigate();
   const location = useLocation();
   const containerRef = useRef<HTMLDivElement>(null);
-  const [scrollProgress, setScrollProgress] = useState(0);
-  const [isScrolling, setIsScrolling] = useState(false);
+  const namesContainerRef = useRef<HTMLDivElement>(null);
+  const [horizontalScrollProgress, setHorizontalScrollProgress] = useState(0);
+  const [isHorizontallyScrolling, setIsHorizontallyScrolling] = useState(false);
   const [containerWidth, setContainerWidth] = useState(0);
   const [contentWidth, setContentWidth] = useState(0);
   const [canScroll, setCanScroll] = useState(false);
@@ -162,7 +165,21 @@ const HeaderIconBar = ({ onIconClick, isScrolled = false }: HeaderIconBarProps) 
     loadIcons();
   }, []);
 
-  // Calculate dimensions and scroll progress when icons change
+  // Track window scroll position for smooth zoom and sticky bar
+  useEffect(() => {
+    const handleWindowScroll = () => {
+      const scrollY = window.scrollY;
+      // Calculate progress: 0 at top, 1 at 150px scrolled
+      const maxScroll = 150;
+      const progress = Math.min(scrollY / maxScroll, 1);
+      setScrollProgress(progress);
+    };
+
+    window.addEventListener('scroll', handleWindowScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleWindowScroll);
+  }, []);
+
+  // Calculate dimensions and horizontal scroll progress
   useEffect(() => {
     const calculateDimensions = () => {
       const container = containerRef.current;
@@ -183,7 +200,7 @@ const HeaderIconBar = ({ onIconClick, isScrolled = false }: HeaderIconBarProps) 
       const maxScrollLeft = contentWidth - containerWidth;
       const progress = maxScrollLeft > 0 ? (scrollLeft / maxScrollLeft) * 100 : 0;
       
-      setScrollProgress(progress);
+      setHorizontalScrollProgress(progress);
     };
 
     // Calculate after a delay to ensure DOM is fully rendered
@@ -198,7 +215,35 @@ const HeaderIconBar = ({ onIconClick, isScrolled = false }: HeaderIconBarProps) 
     };
   }, [icons]);
 
-  // Scroll handler
+  // Sync horizontal scroll between icons and names containers
+  useEffect(() => {
+    const container = containerRef.current;
+    const namesContainer = namesContainerRef.current;
+    
+    if (!container || !namesContainer) return;
+
+    const handleIconScroll = () => {
+      if (namesContainer) {
+        namesContainer.scrollLeft = container.scrollLeft;
+      }
+    };
+
+    const handleNamesScroll = () => {
+      if (container) {
+        container.scrollLeft = namesContainer.scrollLeft;
+      }
+    };
+
+    container.addEventListener('scroll', handleIconScroll);
+    namesContainer.addEventListener('scroll', handleNamesScroll);
+    
+    return () => {
+      container.removeEventListener('scroll', handleIconScroll);
+      namesContainer.removeEventListener('scroll', handleNamesScroll);
+    };
+  }, []);
+
+  // Horizontal scroll handler
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -208,8 +253,8 @@ const HeaderIconBar = ({ onIconClick, isScrolled = false }: HeaderIconBarProps) 
       const maxScrollLeft = contentWidth - containerWidth;
       const progress = maxScrollLeft > 0 ? (scrollLeft / maxScrollLeft) * 100 : 0;
       
-      setScrollProgress(progress);
-      setIsScrolling(true);
+      setHorizontalScrollProgress(progress);
+      setIsHorizontallyScrolling(true);
       
       // Clear previous timeout
       if ((container as any).scrollTimeout) {
@@ -218,7 +263,7 @@ const HeaderIconBar = ({ onIconClick, isScrolled = false }: HeaderIconBarProps) 
       
       // Set timeout to hide scrolling indicator
       (container as any).scrollTimeout = setTimeout(() => {
-        setIsScrolling(false);
+        setIsHorizontallyScrolling(false);
       }, 300);
     };
 
@@ -288,165 +333,185 @@ const HeaderIconBar = ({ onIconClick, isScrolled = false }: HeaderIconBarProps) 
 
   if (!icons.length) return null;
 
+  // Calculate image zoom (scale from 1 to 0.7)
+  const imageScale = 1 - (scrollProgress * 0.3);
+  
+  // Calculate transform for the icons container (slides up as scroll progresses)
+  const iconsTranslateY = scrollProgress * -80; // Move up 80px at full scroll
+  
+  // Calculate opacity for sticky bar (smooth fade in)
+  const stickyBarOpacity = Math.min(scrollProgress * 2, 1);
+
   return (
-    <div className={`relative bg-[#E9E1D8] transition-all duration-300 ${isScrolled ? 'pt-0' : ''}`}>
-      <div className="container mx-auto px-4 pb-4 pt-2">
-        <div className="relative">
-          {/* Fixed Product Names Row when scrolled */}
-          {isScrolled && (
-            <div className="fixed top-14 left-0 right-0 z-40 bg-[#E9E1D8] py-2 shadow-sm border-b border-gray-300">
-              <div className="container mx-auto px-4">
-                <div 
-                  ref={containerRef}
-                  className="flex gap-4 overflow-x-auto no-scrollbar scroll-smooth"
-                  style={{
-                    scrollbarWidth: 'none',
-                    msOverflowStyle: 'none',
-                  }}
-                >
-                  {icons.map((icon) => (
-                    <button
-                      key={icon.id}
-                      onClick={() => handleClick(icon)}
-                      className="flex-shrink-0 relative group"
+    <div className="relative bg-[#E9E1D8]">
+      {/* Sticky Names Bar - Smooth fade in and out */}
+      <div 
+        className="fixed top-14 left-0 right-0 z-40 bg-[#E9E1D8] py-2 shadow-sm border-b border-gray-300 transition-all duration-300 ease-out"
+        style={{
+          opacity: stickyBarOpacity,
+          transform: `translateY(${scrollProgress > 0 ? 0 : -10}px)`,
+          pointerEvents: scrollProgress > 0.1 ? 'auto' : 'none',
+        }}
+      >
+        <div className="container mx-auto px-4">
+          <div 
+            ref={namesContainerRef}
+            className="flex gap-4 overflow-x-auto no-scrollbar scroll-smooth"
+            style={{
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none',
+            }}
+          >
+            {icons.map((icon) => (
+              <button
+                key={icon.id}
+                onClick={() => handleClick(icon)}
+                className="flex-shrink-0 relative group"
+              >
+                <span className={`text-xs font-bold transition-colors whitespace-nowrap ${
+                  isSelected(icon.id) ? "text-gray-700" : "text-gray-900"
+                }`}>
+                  {truncateProductName(icon.title, 14)}
+                </span>
+                
+                {icon.badge_text && (
+                  <div className="absolute -top-1.5 -right-1.5 z-10">
+                    <span
+                      className="text-[8px] text-white px-1 py-0.5 rounded-full font-bold shadow-sm"
+                      style={{
+                        backgroundColor: icon.badge_color || "#ff3b30",
+                      }}
                     >
-                      <span className={`text-xs font-bold transition-colors whitespace-nowrap ${
-                        isSelected(icon.id) ? "text-gray-700" : "text-gray-900"
-                      }`}>
-                        {truncateProductName(icon.title, 14)}
+                      {formatBadgeText(icon.badge_text)}
+                    </span>
+                  </div>
+                )}
+                
+                {isSelected(icon.id) && (
+                  <div className="mt-1 w-full h-0.5 bg-gray-600 rounded-full" />
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Main Icons Row - Slides up smoothly */}
+      <div 
+        className="container mx-auto px-4 pb-4 pt-2 transition-all duration-300 ease-out"
+        style={{
+          transform: `translateY(${iconsTranslateY}px)`,
+          opacity: Math.max(0.2, 1 - scrollProgress), // Smooth fade out
+        }}
+      >
+        <div className="relative">
+          <div 
+            ref={containerRef}
+            className="flex gap-5 overflow-x-auto py-2 no-scrollbar relative scrollbar-hide scroll-smooth"
+            style={{
+              WebkitOverflowScrolling: 'touch',
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none',
+            }}
+          >
+            {icons.map((icon) => {
+              const processedImageUrl = convertDriveUrl(icon.image_url);
+              
+              return (
+                <button
+                  key={icon.id}
+                  onClick={() => handleClick(icon)}
+                  className="relative min-w-[90px] flex-shrink-0 flex flex-col items-center pb-2 group"
+                >
+                  {icon.badge_text && (
+                    <div className="absolute -top-1.5 -right-1.5 z-10">
+                      <span
+                        className="text-[9px] text-white px-1.5 py-0.5 rounded-full font-bold shadow-sm"
+                        style={{
+                          backgroundColor: icon.badge_color || "#ff3b30",
+                        }}
+                      >
+                        {formatBadgeText(icon.badge_text)}
                       </span>
-                      
-                      {icon.badge_text && (
-                        <div className="absolute -top-1.5 -right-1.5 z-10">
-                          <span
-                            className="text-[8px] text-white px-1 py-0.5 rounded-full font-bold shadow-sm"
-                            style={{
-                              backgroundColor: icon.badge_color || "#ff3b30",
-                            }}
-                          >
-                            {formatBadgeText(icon.badge_text)}
-                          </span>
-                        </div>
-                      )}
-                      
-                      {isSelected(icon.id) && (
-                        <div className="mt-1 w-full h-0.5 bg-gray-600 rounded-full" />
-                      )}
-                    </button>
-                  ))}
-                </div>
+                    </div>
+                  )}
+
+                  {/* Image Container - Zooms out smoothly */}
+                  <div
+                    className={`w-16 h-16 rounded-full overflow-hidden mb-2 flex-shrink-0 relative transition-all duration-300 ease-out
+                    ${
+                      isSelected(icon.id)
+                        ? "ring-2 ring-gray-600 ring-offset-2 ring-offset-[#E9E1D8]"
+                        : "hover:ring-2 hover:ring-gray-400 hover:ring-offset-2 hover:ring-offset-[#E9E1D8]"
+                    }`}
+                    style={{
+                      transform: `scale(${imageScale})`,
+                    }}
+                  >
+                    <div className="w-full h-full overflow-hidden relative">
+                      <img
+                        src={processedImageUrl}
+                        alt={icon.title}
+                        className="w-full h-full object-cover absolute top-0 left-0"
+                        style={{
+                          objectPosition: "center top",
+                          minHeight: "100%",
+                          minWidth: "100%"
+                        }}
+                        onError={(e) => {
+                          handleImageError(e, icon.image_url);
+                        }}
+                      />
+                    </div>
+                    
+                    <div className="absolute bottom-0 left-0 right-0 h-4 bg-gradient-to-t from-black/20 to-transparent pointer-events-none" />
+                  </div>
+
+                  {/* Product Name */}
+                  <div className="min-h-[40px] flex items-center justify-center">
+                    <span
+                      className={`text-xs font-bold transition-colors text-center break-words line-clamp-2
+                      ${
+                        isSelected(icon.id)
+                          ? "text-gray-700"
+                          : "text-gray-900"
+                      }`}
+                      style={{
+                        wordWrap: 'break-word',
+                        overflowWrap: 'break-word',
+                        maxWidth: '80px'
+                      }}
+                    >
+                      {truncateProductName(icon.title, 14)}
+                    </span>
+                  </div>
+
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
+                    {icon.title}
+                  </div>
+
+                  {isSelected(icon.id) && (
+                    <div className="mt-1 w-8 h-0.5 bg-gray-600 rounded-full" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+          
+          {/* Progress bar for horizontal scrolling */}
+          {canScroll && containerWidth > 0 && (
+            <div className="mt-1 w-full flex justify-center">
+              <div className="w-1/2 h-[3px] rounded-full bg-gray-300/80 overflow-hidden">
+                <div
+                  className={`h-full bg-white/90 transition-all duration-300 ease-out rounded-full
+                    ${isHorizontallyScrolling ? "opacity-100" : "opacity-90"}`}
+                  style={{ 
+                    width: `${Math.max(0, Math.min(100, horizontalScrollProgress))}%`,
+                    transition: isHorizontallyScrolling ? 'width 0.1s ease-out' : 'width 0.3s ease-out'
+                  }}
+                />
               </div>
             </div>
-          )}
-
-          {/* Normal Icons Row (hidden when scrolled) */}
-          {!isScrolled && (
-            <>
-              <div 
-                ref={containerRef}
-                className="flex gap-5 overflow-x-auto py-2 no-scrollbar relative scrollbar-hide scroll-smooth"
-                style={{
-                  WebkitOverflowScrolling: 'touch',
-                  scrollbarWidth: 'none',
-                  msOverflowStyle: 'none',
-                }}
-              >
-                {icons.map((icon) => {
-                  const processedImageUrl = convertDriveUrl(icon.image_url);
-                  
-                  return (
-                    <button
-                      key={icon.id}
-                      onClick={() => handleClick(icon)}
-                      className="relative min-w-[90px] flex-shrink-0 flex flex-col items-center pb-2 group"
-                    >
-                      {icon.badge_text && (
-                        <div className="absolute -top-1.5 -right-1.5 z-10">
-                          <span
-                            className="text-[9px] text-white px-1.5 py-0.5 rounded-full font-bold shadow-sm"
-                            style={{
-                              backgroundColor:
-                                icon.badge_color || "#ff3b30",
-                            }}
-                          >
-                            {formatBadgeText(icon.badge_text)}
-                          </span>
-                        </div>
-                      )}
-
-                      <div
-                        className={`w-16 h-16 rounded-full overflow-hidden mb-2 flex-shrink-0 relative
-                        ${
-                          isSelected(icon.id)
-                            ? "ring-2 ring-gray-600 ring-offset-2 ring-offset-[#E9E1D8]"
-                            : "hover:ring-2 hover:ring-gray-400 hover:ring-offset-2 hover:ring-offset-[#E9E1D8]"
-                        }`}
-                      >
-                        <div className="w-full h-full overflow-hidden relative">
-                          <img
-                            src={processedImageUrl}
-                            alt={icon.title}
-                            className="w-full h-full object-cover absolute top-0 left-0"
-                            style={{
-                              objectPosition: "center top",
-                              minHeight: "100%",
-                              minWidth: "100%"
-                            }}
-                            onError={(e) => {
-                              handleImageError(e, icon.image_url);
-                            }}
-                          />
-                        </div>
-                        
-                        <div className="absolute bottom-0 left-0 right-0 h-4 bg-gradient-to-t from-black/20 to-transparent pointer-events-none" />
-                      </div>
-
-                      <div className="min-h-[40px] flex items-center justify-center">
-                        <span
-                          className={`text-xs font-bold transition-colors text-center break-words line-clamp-2
-                          ${
-                            isSelected(icon.id)
-                              ? "text-gray-700"
-                              : "text-gray-900"
-                          }`}
-                          style={{
-                            wordWrap: 'break-word',
-                            overflowWrap: 'break-word',
-                            maxWidth: '80px'
-                          }}
-                        >
-                          {truncateProductName(icon.title, 14)}
-                        </span>
-                      </div>
-
-                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
-                        {icon.title}
-                      </div>
-
-                      {isSelected(icon.id) && (
-                        <div className="mt-1 w-8 h-0.5 bg-gray-600 rounded-full" />
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-              
-              {/* White progress bar on light gray track - FIXED */}
-              {canScroll && containerWidth > 0 && (
-                <div className="mt-1 w-full flex justify-center">
-                  <div className="w-1/2 h-[3px] rounded-full bg-gray-300/80 overflow-hidden">
-                    <div
-                      className={`h-full bg-white/90 transition-all duration-300 ease-out rounded-full
-                        ${isScrolling ? "opacity-100" : "opacity-90"}`}
-                      style={{ 
-                        width: `${Math.max(0, Math.min(100, scrollProgress))}%`,
-                        transition: isScrolling ? 'width 0.1s ease-out' : 'width 0.3s ease-out'
-                      }}
-                    />
-                  </div>
-                </div>
-              )}
-            </>
           )}
         </div>
       </div>

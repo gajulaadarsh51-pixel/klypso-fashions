@@ -9,7 +9,6 @@ import {
   User,
   Package,
   Heart,
-  ArrowLeft,
 } from "lucide-react";
 
 import { useCart } from "@/contexts/CartContext";
@@ -34,11 +33,6 @@ interface IconItem {
   link_url: string;
   badge_text?: string;
   badge_color?: string;
-}
-
-interface HeaderIconBarProps {
-  onIconClick?: (icon: IconItem) => void;
-  isScrolled?: boolean;
 }
 
 /* AccountIcons Component */
@@ -94,8 +88,11 @@ const Header = ({ activeCategory }: HeaderProps) => {
   const [lastScrollY, setLastScrollY] = useState(0);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [scrollProgress, setScrollProgress] = useState(0); // 0 to 1, where 1 means fully scrolled
 
   const mobileMenuRef = useRef<HTMLDivElement | null>(null);
+  const headerRef = useRef<HTMLDivElement | null>(null);
+  const rafRef = useRef<number | null>(null);
 
   const { totalItems, setIsCartOpen } = useCart();
   const { wishlistItems } = useWishlist();
@@ -129,35 +126,48 @@ const Header = ({ activeCategory }: HeaderProps) => {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  /* ================= FLIPKART STYLE SCROLL HANDLER ================= */
+  /* ================= SMOOTH SCROLL HANDLER - WITH PROGRESS ================= */
   useEffect(() => {
-    let ticking = false;
+    const SCROLL_THRESHOLD = 80; // pixels to reach full scroll state
     
     const handleScroll = () => {
-      if (!ticking) {
-        window.requestAnimationFrame(() => {
-          const currentScrollY = window.scrollY;
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+      }
+      
+      rafRef.current = requestAnimationFrame(() => {
+        const currentScrollY = window.scrollY;
+        
+        // Only for mobile (below lg breakpoint)
+        if (window.innerWidth < 1024) {
+          // Calculate scroll progress (0 to 1)
+          const progress = Math.min(currentScrollY / SCROLL_THRESHOLD, 1);
+          setScrollProgress(progress);
           
-          if (window.innerWidth < 1024) {
-            if (currentScrollY > 100) {
-              setIsScrolled(true);
-            } else {
-              setIsScrolled(false);
-            }
-          } else {
+          // Also maintain the isScrolled state for backward compatibility
+          if (currentScrollY > SCROLL_THRESHOLD * 0.8) {
+            setIsScrolled(true);
+          } else if (currentScrollY < SCROLL_THRESHOLD * 0.3) {
             setIsScrolled(false);
           }
-          
-          setLastScrollY(currentScrollY);
-          ticking = false;
-        });
-        ticking = true;
-      }
+        } else {
+          setScrollProgress(0);
+          setIsScrolled(false);
+        }
+        
+        setLastScrollY(currentScrollY);
+        rafRef.current = null;
+      });
     };
 
     window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [lastScrollY]);
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+      }
+    };
+  }, []);
 
   /* ================= ACTIVE STYLE ================= */
   const navClass = (cat?: string, isSale = false) => {
@@ -290,6 +300,49 @@ const Header = ({ activeCategory }: HeaderProps) => {
     console.log("Header icon clicked:", icon.title);
   };
 
+  // Calculate opacity and transform styles based on scroll progress
+  const getHeaderStyles = () => {
+    // For desktop, no changes
+    if (window.innerWidth >= 1024) return {};
+    
+    // Smooth opacity transitions
+    const menuOpacity = Math.max(1 - scrollProgress * 1.5, 0); // Menu button fades out
+    const iconsOpacity = Math.max(1 - scrollProgress * 1.2, 0); // Icons fade out
+    const titleOpacity = Math.max(1 - scrollProgress * 1.5, 0); // Title fades out
+    const searchOpacity = Math.max(1 - scrollProgress * 0.5, 0.8); // Search bar slightly fades but stays visible
+    
+    // Increased transformY from 15 to 25 for more upward movement
+    const transformY = scrollProgress * 25; // More upward movement (25px max)
+    
+    return {
+      menuContainer: {
+        opacity: menuOpacity,
+        transform: `translateY(-${transformY}px)`,
+        transition: 'opacity 0.2s ease-out, transform 0.2s ease-out',
+        pointerEvents: menuOpacity < 0.1 ? 'none' : 'auto' as const,
+      },
+      iconsContainer: {
+        opacity: iconsOpacity,
+        transform: `translateY(-${transformY}px)`,
+        transition: 'opacity 0.2s ease-out, transform 0.2s ease-out',
+        pointerEvents: iconsOpacity < 0.1 ? 'none' : 'auto' as const,
+      },
+      titleContainer: {
+        opacity: titleOpacity,
+        transform: `translateY(-${transformY}px)`,
+        transition: 'opacity 0.2s ease-out, transform 0.2s ease-out',
+        pointerEvents: titleOpacity < 0.1 ? 'none' : 'auto' as const,
+      },
+      searchContainer: {
+        opacity: searchOpacity,
+        transform: `translateY(-${transformY}px)`,
+        transition: 'opacity 0.2s ease-out, transform 0.2s ease-out',
+      },
+    };
+  };
+
+  const headerStyles = getHeaderStyles();
+
   return (
     <>
       {/* DESKTOP HEADER - Fixed at top */}
@@ -302,11 +355,14 @@ const Header = ({ activeCategory }: HeaderProps) => {
                 {loading ? (
                   <h1 className="text-3xl font-bold text-gray-800">Loading...</h1>
                 ) : (
-                  <h1 className="text-3xl font-bold whitespace-nowrap">
-                    <span style={{ color: settings.first_name_color || "#1e293b" }}>
+                  <h1 
+                    key={`desktop-logo-${settings.first_name_color}-${settings.second_name_color}`} 
+                    className="text-3xl font-bold whitespace-nowrap"
+                  >
+                    <span style={{ color: settings.first_name_color }}>
                       {nameParts.firstPart}
                     </span>
-                    <span style={{ color: settings.second_name_color || "#f59e0b" }}>
+                    <span style={{ color: settings.second_name_color }}>
                       {nameParts.secondPart}
                     </span>
                   </h1>
@@ -430,91 +486,66 @@ const Header = ({ activeCategory }: HeaderProps) => {
       <div className="hidden lg:block h-28"></div>
 
       {/* MOBILE HEADER */}
-      <div className="lg:hidden">
-        {/* Fixed Top Header (shown when scrolled) */}
-        {isScrolled && (
-          <div className="fixed top-0 left-0 right-0 z-50 bg-[#E9E1D8] shadow-lg border-b border-gray-300">
-            <div className="container mx-auto px-3 sm:px-4">
-              <div className="flex items-center justify-between py-3">
-                <button
-                  onClick={() => {
-                    if (window.scrollY > 100) {
-                      window.scrollTo({ top: 0, behavior: 'smooth' });
-                    } else {
-                      setIsScrolled(false);
-                    }
-                  }}
-                  className="p-1.5 hover:bg-white/30 rounded-md transition-colors flex-shrink-0"
-                  aria-label="Back to top"
-                >
-                  <ArrowLeft size={20} className="text-gray-800" />
-                </button>
-
-                <div className="flex-1 mx-3">
-                  <SearchBar isMobile />
-                </div>
-
-                <Link 
-                  to="/wishlist" 
-                  className="relative p-1.5 hover:bg-white/30 rounded-md transition-colors group flex-shrink-0"
-                  aria-label="Wishlist"
-                >
-                  <Heart size={20} className="text-gray-800" />
-                  {wishlistItems.length > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-orange-400 text-xs rounded-full flex items-center justify-center text-gray-900 font-bold">
-                      {wishlistItems.length}
-                    </span>
-                  )}
-                </Link>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Normal Mobile Header (shown when NOT scrolled) */}
-        {!isScrolled && (
-          <div className="bg-[#E9E1D8] shadow-lg">
-            {/* TOP ROW: Menu, Logo, Wishlist, Cart */}
-            <div className="container mx-auto px-3 sm:px-4 pt-3">
-              <div className="flex items-center justify-between py-3">
-                {/* MOBILE MENU BUTTON - Left */}
+      <div className="lg:hidden" ref={headerRef}>
+        {/* Fixed Mobile Header */}
+        <div 
+          className={`fixed top-0 left-0 right-0 z-50 bg-[#E9E1D8] shadow-lg transition-all duration-300 ${
+            isScrolled ? 'border-b border-gray-300' : ''
+          }`}
+        >
+          {/* Always visible section - Menu button and Search */}
+          <div className="container mx-auto px-3 sm:px-4">
+            {/* Top Row: Menu, Logo, Icons */}
+            <div className="flex items-center justify-between py-2">
+              {/* Menu Button - Fades out on scroll */}
+              <div 
+                style={headerStyles.menuContainer}
+              >
                 <button
                   onClick={() => setIsMenuOpen(true)}
-                  className="p-1.5 hover:bg-white/30 rounded-md transition-colors relative group flex-shrink-0"
+                  className="p-1.5 hover:bg-white/30 rounded-md transition-colors flex-shrink-0"
                   aria-label="Open menu"
                 >
                   <Menu size={20} className="text-gray-800" />
-                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
-                    Menu
-                  </div>
                 </button>
+              </div>
 
-                {/* LOGO - Center */}
-                <div className="flex-1 flex justify-center">
-                  <Link 
-                    to="/" 
-                    className="flex-shrink-0"
-                    onClick={handleLogoClick}
-                  >
-                    {loading ? (
-                      <h1 className="text-lg sm:text-xl font-bold text-gray-800">Loading...</h1>
-                    ) : (
-                      <h1 className="text-lg sm:text-xl font-bold whitespace-nowrap">
-                        <span style={{ color: settings.first_name_color || "#1e293b" }}>
-                          {nameParts.firstPart}
-                        </span>
-                        <span style={{ color: settings.second_name_color || "#f59e0b" }}>
-                          {nameParts.secondPart}
-                        </span>
-                      </h1>
-                    )}
-                  </Link>
-                </div>
+              {/* Logo - Fades out smoothly on scroll */}
+              <div 
+                className="flex-1 flex justify-center min-w-0 px-2"
+                style={headerStyles.titleContainer}
+              >
+                <Link 
+                  to="/" 
+                  className="flex-shrink-0"
+                  onClick={handleLogoClick}
+                >
+                  {loading ? (
+                    <h1 className="text-lg sm:text-xl font-bold text-gray-800 truncate">Loading...</h1>
+                  ) : (
+                    <h1 
+                      key={`mobile-logo-${settings.first_name_color}-${settings.second_name_color}`} 
+                      className="text-lg sm:text-xl font-bold whitespace-nowrap"
+                    >
+                      <span style={{ color: settings.first_name_color }}>
+                        {nameParts.firstPart}
+                      </span>
+                      <span style={{ color: settings.second_name_color }}>
+                        {nameParts.secondPart}
+                      </span>
+                    </h1>
+                  )}
+                </Link>
+              </div>
 
-                {/* WISHLIST ICON */}
+              {/* Right Icons - Fade out on scroll */}
+              <div 
+                className="flex items-center gap-1 sm:gap-2 flex-shrink-0"
+                style={headerStyles.iconsContainer}
+              >
                 <Link 
                   to="/wishlist" 
-                  className="relative p-1.5 hover:bg-white/30 rounded-md transition-colors group flex-shrink-0 mr-2"
+                  className="relative p-1.5 hover:bg-white/30 rounded-md transition-colors group"
                   aria-label="Wishlist"
                 >
                   <Heart size={20} className="text-gray-800" />
@@ -525,10 +556,9 @@ const Header = ({ activeCategory }: HeaderProps) => {
                   )}
                 </Link>
 
-                {/* CART ICON */}
                 <button
                   onClick={() => setIsCartOpen(true)}
-                  className="relative p-1.5 hover:bg-white/30 rounded-md transition-colors group flex-shrink-0"
+                  className="relative p-1.5 hover:bg-white/30 rounded-md transition-colors group"
                   aria-label="Cart"
                 >
                   <ShoppingBag size={20} className="text-gray-800" />
@@ -541,17 +571,23 @@ const Header = ({ activeCategory }: HeaderProps) => {
               </div>
             </div>
 
-            {/* SEARCH BAR - Always visible at top in normal state */}
-            <div className="bg-[#E9E1D8] border-b border-gray-300 py-2 px-3">
+            {/* Search Bar - Always visible with upward movement */}
+            <div 
+              className="pb-2"
+              style={headerStyles.searchContainer}
+            >
               <SearchBar isMobile />
             </div>
           </div>
-        )}
+        </div>
 
-        {/* Add padding when header is fixed (scrolled state) */}
-        {isScrolled && (
-          <div className="lg:hidden pt-16"></div>
-        )}
+        {/* Dynamic Spacer - Smooth shrinking with more reduction */}
+        <div
+          className="transition-all duration-300"
+          style={{
+            height: `${105 - scrollProgress * 70}px`
+          }}
+        ></div>
       </div>
 
       {/* HEADER ICON BAR - Hide on order pages and product detail pages */}

@@ -1,4 +1,3 @@
-// SearchBar.tsx
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -6,14 +5,11 @@ import {
   ChevronRight,
   Clock,
   Flame,
-  Store,
   X,
-  TrendingUp,
   ArrowLeft,
   Sparkles,
   Camera,
   Image as ImageIcon,
-  Star,
   Tag,
   ShoppingBag,
   Grid,
@@ -1042,17 +1038,21 @@ const SearchBar: React.FC<SearchBarProps> = ({
                       </div>
                       <span className="text-sm text-gray-700 truncate">{search}</span>
                     </div>
-                    <button
+                    {/* Changed from button to div with button-like styling */}
+                    <div
                       onClick={(e) => {
                         e.stopPropagation();
                         const newRecent = recentSearches.filter((_, i) => i !== index);
                         localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(newRecent));
                         setRecentSearches(newRecent);
                       }}
-                      className="p-1 hover:bg-gray-200 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="p-1 hover:bg-gray-200 rounded-full cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
+                      role="button"
+                      tabIndex={0}
+                      aria-label="Remove from recent searches"
                     >
                       <X size={12} className="text-gray-400" />
-                    </button>
+                    </div>
                   </button>
                 ))}
               </div>
@@ -1203,9 +1203,19 @@ const SearchBar: React.FC<SearchBarProps> = ({
                           </>
                         )}
                       </div>
-                      <button className="p-1 hover:bg-blue-100 rounded-full transition-colors">
+                      {/* Changed from button to div with button-like styling */}
+                      <div 
+                        className="p-1 hover:bg-blue-100 rounded-full cursor-pointer transition-colors"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          // Add to wishlist functionality here
+                        }}
+                        role="button"
+                        tabIndex={0}
+                        aria-label="Add to wishlist"
+                      >
                         <Heart size={14} className="text-gray-400 hover:text-red-500" />
-                      </button>
+                      </div>
                     </div>
                   </button>
                 ))}
@@ -1331,7 +1341,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
             </div>
           )}
 
-          {/* Footer Section */}
+          {/* Footer Section - REMOVED CAMERA ICON */}
           {searchValue.trim().length === 0 && (
             <div className="p-4" style={{ backgroundColor: '#E9E1D8' }}>
               <div className="flex items-center justify-between text-xs text-gray-500">
@@ -1349,13 +1359,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
                     Quality Assured
                   </span>
                 </div>
-                <button 
-                  onClick={() => setIsImageSearchOpen(true)}
-                  className="text-blue-600 hover:text-blue-800 flex items-center gap-1"
-                >
-                  <Camera size={12} />
-                  Search by Image
-                </button>
+                {/* Camera icon button completely removed */}
               </div>
             </div>
           )}

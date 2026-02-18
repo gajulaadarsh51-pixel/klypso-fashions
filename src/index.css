@@ -13,8 +13,9 @@ body {
   /* Mobile viewport fix */
 html,
 body {
-  height: 100%;
   overflow-x: hidden;
+}
+
 }
 /* Add to your global CSS file for scrollbar hiding */
 .scrollbar-hide::-webkit-scrollbar {
@@ -26,8 +27,10 @@ body {
 }
 /* Prevent mobile resize jump */
 #root {
-  min-height: 100dvh;
+  min-height: 100vh;
 }
+
+
 
 /* iOS Safe Area Support */
 .safe-bottom {
@@ -122,7 +125,7 @@ body {
     --input: 0 0% 20%;
     --ring: 38 60% 55%;
   }
-}
+
 
 @layer base {
   * {

@@ -6,9 +6,11 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useWorldOfDesireAdmin } from "@/hooks/useWorldOfDesireAdmin";
 import { processGoogleDriveUrl } from "@/hooks/useWorldOfDesire";
-import { Pencil, Trash2, ExternalLink } from "lucide-react";
+import { Pencil, Trash2, ExternalLink, Loader2, AlertCircle } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 
 const AdminWorldOfDesire = () => {
+  const queryClient = useQueryClient();
   const { list, create, update, remove } = useWorldOfDesireAdmin();
 
   // Predefined category links for the dropdown
@@ -36,50 +38,102 @@ const AdminWorldOfDesire = () => {
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const handleEdit = (item: any) => {
     setEditingId(item.id);
     setEditForm({ ...item });
+    setError(null);
   };
 
-  const handleSaveEdit = () => {
-    if (editingId && editForm) {
-      update.mutate({ id: editingId, ...editForm });
+  const handleSaveEdit = async () => {
+    if (!editingId || !editForm) return;
+    
+    if (!editForm.title?.trim()) {
+      setError("Title is required");
+      return;
+    }
+    
+    if (!editForm.image_url?.trim()) {
+      setError("Image URL is required");
+      return;
+    }
+    
+    try {
+      await update.mutateAsync({ id: editingId, ...editForm });
       setEditingId(null);
       setEditForm(null);
+      setSuccessMessage("Item updated successfully");
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (err) {
+      setError("Failed to update item");
     }
   };
 
   const handleCancelEdit = () => {
     setEditingId(null);
     setEditForm(null);
+    setError(null);
   };
 
-  const handleSubmit = () => {
-    if (!form.title || !form.image_url) {
-      alert("Please fill in title and image URL");
+  const handleSubmit = async () => {
+    // Validation
+    if (!form.title?.trim()) {
+      setError("Title is required");
       return;
     }
     
-    // Ensure link starts with / if it's not a full URL
-    let finalLink = form.link;
-    if (finalLink && !finalLink.startsWith('http') && !finalLink.startsWith('/')) {
-      finalLink = `/${finalLink}`;
+    if (!form.image_url?.trim()) {
+      setError("Image URL is required");
+      return;
     }
+
+    setError(null);
     
-    create.mutate({
-      ...form,
-      link: finalLink
-    });
-    
-    setForm({
-      title: "",
-      image_url: "",
-      link: "/products",
-      offer: "Featured",
-      position: 0,
-      is_active: true,
-    });
+    try {
+      // Ensure link starts with / if it's not a full URL
+      let finalLink = form.link;
+      if (finalLink && !finalLink.startsWith('http') && !finalLink.startsWith('/')) {
+        finalLink = `/${finalLink}`;
+      }
+      
+      const payload = {
+        title: form.title.trim(),
+        image_url: form.image_url.trim(),
+        link: finalLink,
+        offer: form.offer?.trim() || "Featured",
+        position: Number(form.position) || 0,
+        is_active: form.is_active,
+      };
+
+      console.log("Submitting payload:", payload);
+      
+      await create.mutateAsync(payload);
+      
+      // Reset form on success
+      setForm({
+        title: "",
+        image_url: "",
+        link: "/products",
+        offer: "Featured",
+        position: 0,
+        is_active: true,
+      });
+      
+      setSuccessMessage("Collection added successfully");
+      setTimeout(() => setSuccessMessage(null), 3000);
+      
+    } catch (err: any) {
+      console.error("Submit error:", err);
+      
+      // Check for RLS policy error
+      if (err.message?.includes("row-level security policy")) {
+        setError("Permission denied: You don't have access to add items. Please check your authentication.");
+      } else {
+        setError(err.message || "Failed to add collection");
+      }
+    }
   };
 
   return (
@@ -90,6 +144,22 @@ const AdminWorldOfDesire = () => {
           {list.data?.length || 0} items
         </div>
       </div>
+
+      {/* Success Message */}
+      {successMessage && (
+        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg flex items-center gap-2">
+          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+          {successMessage}
+        </div>
+      )}
+
+      {/* Error Message */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-center gap-2">
+          <AlertCircle className="w-4 h-4" />
+          {error}
+        </div>
+      )}
 
       {/* CREATE FORM */}
       <div className="bg-white p-6 rounded-lg border shadow-sm">
@@ -103,6 +173,7 @@ const AdminWorldOfDesire = () => {
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
               required
+              disabled={create.isPending}
             />
           </div>
 
@@ -115,6 +186,7 @@ const AdminWorldOfDesire = () => {
                 value={form.image_url}
                 onChange={(e) => setForm({ ...form, image_url: e.target.value })}
                 required
+                disabled={create.isPending}
               />
               <Button
                 type="button"
@@ -125,7 +197,7 @@ const AdminWorldOfDesire = () => {
                     window.open(form.image_url, '_blank');
                   }
                 }}
-                disabled={!form.image_url}
+                disabled={!form.image_url || create.isPending}
               >
                 <ExternalLink className="h-4 w-4" />
               </Button>
@@ -142,6 +214,7 @@ const AdminWorldOfDesire = () => {
               value={form.link}
               onChange={(e) => setForm({ ...form, link: e.target.value })}
               className="w-full px-3 py-2 border border-input bg-background rounded-md text-sm"
+              disabled={create.isPending}
             >
               {categoryLinks.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -154,6 +227,7 @@ const AdminWorldOfDesire = () => {
               value={form.link}
               onChange={(e) => setForm({ ...form, link: e.target.value })}
               className="mt-1"
+              disabled={create.isPending}
             />
           </div>
 
@@ -164,6 +238,7 @@ const AdminWorldOfDesire = () => {
               placeholder="Featured, New, Limited"
               value={form.offer}
               onChange={(e) => setForm({ ...form, offer: e.target.value })}
+              disabled={create.isPending}
             />
           </div>
 
@@ -175,12 +250,24 @@ const AdminWorldOfDesire = () => {
               placeholder="0"
               value={form.position}
               onChange={(e) => setForm({ ...form, position: Number(e.target.value) })}
+              disabled={create.isPending}
             />
           </div>
 
           <div className="space-y-2 flex flex-col justify-end">
-            <Button onClick={handleSubmit} className="w-full">
-              Add Collection
+            <Button 
+              onClick={handleSubmit} 
+              className="w-full"
+              disabled={create.isPending}
+            >
+              {create.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Adding...
+                </>
+              ) : (
+                "Add Collection"
+              )}
             </Button>
           </div>
         </div>
@@ -190,7 +277,7 @@ const AdminWorldOfDesire = () => {
           <div className="mt-4 p-4 border rounded-lg">
             <Label className="text-sm font-medium">Preview</Label>
             <div className="mt-2 flex items-center gap-4">
-              <div className="w-24 h-24 border rounded overflow-hidden">
+              <div className="w-24 h-24 border rounded overflow-hidden bg-gray-50">
                 <img
                   src={processGoogleDriveUrl(form.image_url)}
                   alt="Preview"
@@ -218,10 +305,12 @@ const AdminWorldOfDesire = () => {
 
         <div className="divide-y">
           {list.isLoading ? (
-            <div className="p-8 text-center">Loading...</div>
+            <div className="p-8 text-center flex items-center justify-center">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
           ) : list.data?.length === 0 ? (
             <div className="p-8 text-center text-muted-foreground">
-              No collections added yet
+              No collections added yet. Add your first collection above.
             </div>
           ) : (
             list.data?.map((item) => (
@@ -231,18 +320,35 @@ const AdminWorldOfDesire = () => {
                   <div className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                       <div className="space-y-2">
-                        <Label>Title</Label>
+                        <Label>Title *</Label>
                         <Input
                           value={editForm?.title || ""}
                           onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                          disabled={update.isPending}
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label>Image URL</Label>
-                        <Input
-                          value={editForm?.image_url || ""}
-                          onChange={(e) => setEditForm({ ...editForm, image_url: e.target.value })}
-                        />
+                        <Label>Image URL *</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            value={editForm?.image_url || ""}
+                            onChange={(e) => setEditForm({ ...editForm, image_url: e.target.value })}
+                            disabled={update.isPending}
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            onClick={() => {
+                              if (editForm?.image_url) {
+                                window.open(editForm.image_url, '_blank');
+                              }
+                            }}
+                            disabled={!editForm?.image_url || update.isPending}
+                          >
+                            <ExternalLink className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
                       <div className="space-y-2">
                         <Label>Link</Label>
@@ -250,6 +356,7 @@ const AdminWorldOfDesire = () => {
                           value={editForm?.link || "/products"}
                           onChange={(e) => setEditForm({ ...editForm, link: e.target.value })}
                           className="w-full px-3 py-2 border border-input bg-background rounded-md text-sm"
+                          disabled={update.isPending}
                         >
                           {categoryLinks.map((option) => (
                             <option key={option.value} value={option.value}>
@@ -262,6 +369,7 @@ const AdminWorldOfDesire = () => {
                           onChange={(e) => setEditForm({ ...editForm, link: e.target.value })}
                           className="mt-1"
                           placeholder="Custom link"
+                          disabled={update.isPending}
                         />
                       </div>
                       <div className="space-y-2">
@@ -269,6 +377,7 @@ const AdminWorldOfDesire = () => {
                         <Input
                           value={editForm?.offer || ""}
                           onChange={(e) => setEditForm({ ...editForm, offer: e.target.value })}
+                          disabled={update.isPending}
                         />
                       </div>
                     </div>
@@ -279,6 +388,7 @@ const AdminWorldOfDesire = () => {
                           <Switch
                             checked={editForm?.is_active || false}
                             onCheckedChange={(checked) => setEditForm({ ...editForm, is_active: checked })}
+                            disabled={update.isPending}
                           />
                           <Label>Active</Label>
                         </div>
@@ -289,16 +399,31 @@ const AdminWorldOfDesire = () => {
                             className="w-20"
                             value={editForm?.position || 0}
                             onChange={(e) => setEditForm({ ...editForm, position: Number(e.target.value) })}
+                            disabled={update.isPending}
                           />
                         </div>
                       </div>
                       
                       <div className="flex gap-2">
-                        <Button variant="outline" onClick={handleCancelEdit}>
+                        <Button 
+                          variant="outline" 
+                          onClick={handleCancelEdit}
+                          disabled={update.isPending}
+                        >
                           Cancel
                         </Button>
-                        <Button onClick={handleSaveEdit}>
-                          Save Changes
+                        <Button 
+                          onClick={handleSaveEdit}
+                          disabled={update.isPending}
+                        >
+                          {update.isPending ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Saving...
+                            </>
+                          ) : (
+                            "Save Changes"
+                          )}
                         </Button>
                       </div>
                     </div>
@@ -307,7 +432,7 @@ const AdminWorldOfDesire = () => {
                   // VIEW MODE
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                      <div className="w-16 h-16 rounded-lg border overflow-hidden flex-shrink-0">
+                      <div className="w-16 h-16 rounded-lg border overflow-hidden flex-shrink-0 bg-gray-50">
                         <img
                           src={processGoogleDriveUrl(item.image_url)}
                           alt={item.title}
@@ -349,6 +474,7 @@ const AdminWorldOfDesire = () => {
                         variant="ghost"
                         size="sm"
                         onClick={() => handleEdit(item)}
+                        disabled={remove.isPending}
                       >
                         <Pencil className="h-4 w-4" />
                       </Button>
@@ -360,8 +486,13 @@ const AdminWorldOfDesire = () => {
                             remove.mutate(item.id);
                           }
                         }}
+                        disabled={remove.isPending}
                       >
-                        <Trash2 className="h-4 w-4" />
+                        {remove.isPending && remove.variables === item.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-4 w-4" />
+                        )}
                       </Button>
                     </div>
                   </div>
@@ -377,6 +508,7 @@ const AdminWorldOfDesire = () => {
         <h3 className="font-semibold text-blue-800 mb-2">How to use:</h3>
         <ol className="list-decimal list-inside space-y-1 text-sm text-blue-700">
           <li>Upload image to Google Drive and get shareable link</li>
+          <li>Set the file permissions to "Anyone with the link"</li>
           <li>Select a destination link from dropdown or enter custom link</li>
           <li>Valid links: /products, /products?category=men, /products?sale=true</li>
           <li>Make sure the Products page supports your selected category</li>

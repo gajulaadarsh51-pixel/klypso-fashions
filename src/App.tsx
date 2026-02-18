@@ -42,6 +42,7 @@ import AdminBrands from "./pages/admin/AdminBrands";
 import AdminFestivals from "./pages/admin/AdminFestivals";
 import AdminWorldOfDesire from "./pages/admin/AdminWorldOfDesire";
 import AdminTrendingSlides from "./pages/admin/AdminTrendingSlides";
+import AdminFashionForecast from "./pages/admin/AdminFashionForecast";
 
 import AccountLayout from "./pages/account/AccountLayout";
 import AccountProfile from "./pages/account/AccountProfile";
@@ -49,7 +50,16 @@ import AccountOrders from "./pages/account/AccountOrders";
 
 import BottomNavigation from "./components/BottomNavigation";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5, // 5 minutes
+      gcTime: 1000 * 60 * 10, // 10 minutes (formerly cacheTime)
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  },
+});
 
 const AppContent = () => {
   const location = useLocation();
@@ -75,6 +85,7 @@ const AppContent = () => {
             <Route path="festivals" element={<AdminFestivals />} />
             <Route path="world-of-desire" element={<AdminWorldOfDesire />} />
             <Route path="trending-slides" element={<AdminTrendingSlides />} />
+            <Route path="fashion-forecast" element={<AdminFashionForecast />} />
           </Route>
 
           <Route path="/" element={<Index />} />
@@ -105,27 +116,35 @@ const AppContent = () => {
   );
 };
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <AuthProvider>
-        <CartProvider>
-          <WishlistProvider>
-            <SettingsProvider>
-              <Toaster />
-              <Sonner />
-              <BrowserRouter>
-                <MaintenanceMode>
-                  <ScrollToTop />
-                  <AppContent />
-                </MaintenanceMode>
-              </BrowserRouter>
-            </SettingsProvider>
-          </WishlistProvider>
-        </CartProvider>
-      </AuthProvider>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+const App = () => {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <AuthProvider>
+          <CartProvider>
+            <WishlistProvider>
+              <SettingsProvider>
+                <Toaster />
+                <Sonner />
+                {/* ✅ FIXED: Added future flags to BrowserRouter */}
+                <BrowserRouter
+                  future={{
+                    v7_startTransition: true,
+                    v7_relativeSplatPath: true,
+                  }}
+                >
+                  <MaintenanceMode>
+                    <ScrollToTop />
+                    <AppContent />
+                  </MaintenanceMode>
+                </BrowserRouter>
+              </SettingsProvider>
+            </WishlistProvider>
+          </CartProvider>
+        </AuthProvider>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;

@@ -12,8 +12,8 @@ export interface StoreSettings {
   enable_notifications: boolean;
   enable_reviews: boolean;
   maintenance_mode: boolean;
-  first_name_color: string; // Color for first part of store name
-  second_name_color: string; // Color for second part of store name
+  first_name_color: string;
+  second_name_color: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -27,16 +27,16 @@ interface SettingsContextType {
 }
 
 const defaultSettings: StoreSettings = {
-  store_name: '',
-  store_email: '',
-  store_phone: '',
+  store_name: 'SS Fashions',
+  store_email: 'contact@ssfashions.com',
+  store_phone: '+91 98765 43210',
   currency: 'INR',
   free_shipping_threshold: 2000,
   enable_notifications: true,
   enable_reviews: true,
   maintenance_mode: false,
-  first_name_color: '#8B5CF6', // Purple color for first part
-  second_name_color: '#000000', // Black color for second part
+  first_name_color: '#8B5CF6',
+  second_name_color: '#000000',
 };
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
@@ -58,33 +58,41 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
+  useEffect(() => {
+    console.log('SettingsProvider mounted, loading settings...');
+    loadSettings();
+  }, []);
+
   const loadSettings = async () => {
     try {
+      console.log('Loading settings from database...');
       setLoading(true);
+      
       const { data, error } = await supabase
         .from('store_settings')
         .select('*')
         .order('created_at', { ascending: false })
         .limit(1);
 
-      if (error) throw error;
+      console.log('Load response:', { data, error });
+
+      if (error) {
+        console.error('Error loading settings:', error);
+        throw error;
+      }
 
       if (data && data.length > 0) {
-        // Ensure color fields exist in loaded data
-        const loadedSettings = {
-          ...defaultSettings,
-          ...data[0],
-        };
-        setSettings(loadedSettings);
+        console.log('Settings loaded:', data[0]);
+        setSettings(data[0]);
       } else {
-        // Create default settings if none exist
+        console.log('No settings found, creating defaults...');
         await createDefaultSettings();
       }
     } catch (error: any) {
-      console.error('Error loading settings:', error);
+      console.error('Error in loadSettings:', error);
       toast({
         title: 'Error loading settings',
-        description: 'Using default settings',
+        description: error.message,
         variant: 'destructive',
       });
     } finally {
@@ -92,93 +100,112 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
     }
   };
 
-  useEffect(() => {
-    loadSettings();
-  }, []);
-
   const createDefaultSettings = async () => {
     try {
-      const defaultStoreSettings = {
-        store_name: 'SS Fashions',
-        store_email: 'contact@ssfashions.com',
-        store_phone: '+91 98765 43210',
-        currency: 'INR',
-        free_shipping_threshold: 2000,
-        enable_notifications: true,
-        enable_reviews: true,
-        maintenance_mode: false,
-        first_name_color: '#8B5CF6', // Purple
-        second_name_color: '#000000', // Black
-      };
+      console.log('Creating default settings...');
       
       const { data, error } = await supabase
         .from('store_settings')
-        .insert([defaultStoreSettings])
+        .insert([defaultSettings])
         .select();
+
+      console.log('Create response:', { data, error });
 
       if (error) throw error;
 
       if (data && data.length > 0) {
+        console.log('Default settings created:', data[0]);
         setSettings(data[0]);
       }
     } catch (error: any) {
       console.error('Error creating default settings:', error);
+      toast({
+        title: 'Error creating settings',
+        description: error.message,
+        variant: 'destructive',
+      });
     }
   };
 
   const saveSettings = async (newSettings: Partial<StoreSettings>) => {
     try {
-      let updatedSettings;
+      console.log('Saving settings...', { newSettings, currentId: settings.id });
+      setLoading(true);
       
-      // If we have an ID, update existing settings
       if (settings.id) {
-        const { data, error } = await supabase
+        // Update existing
+        console.log('Updating existing settings with ID:', settings.id);
+        
+        // First, perform the update
+        const { error: updateError } = await supabase
           .from('store_settings')
           .update({
             ...newSettings,
             updated_at: new Date().toISOString()
           })
+          .eq('id', settings.id);
+
+        console.log('Update error:', updateError);
+
+        if (updateError) throw updateError;
+
+        // Then fetch the updated record
+        console.log('Fetching updated settings...');
+        const { data: fetchData, error: fetchError } = await supabase
+          .from('store_settings')
+          .select('*')
           .eq('id', settings.id)
-          .select();
+          .single();
 
-        if (error) throw error;
+        console.log('Fetch response:', { fetchData, fetchError });
 
-        if (data && data.length > 0) {
-          updatedSettings = data[0];
-          setSettings(updatedSettings);
+        if (fetchError) throw fetchError;
+
+        if (fetchData) {
+          console.log('Settings saved successfully:', fetchData);
+          setSettings(fetchData);
           toast({
-            title: 'Settings updated successfully!',
+            title: 'Success',
+            description: 'Settings updated successfully!',
           });
+        } else {
+          throw new Error('Could not retrieve updated settings');
         }
       } else {
-        // Otherwise, insert new settings
+        // Insert new
+        console.log('Inserting new settings');
+        
         const { data, error } = await supabase
           .from('store_settings')
           .insert([{ ...defaultSettings, ...newSettings }])
           .select();
 
+        console.log('Insert response:', { data, error });
+
         if (error) throw error;
 
         if (data && data.length > 0) {
-          updatedSettings = data[0];
-          setSettings(updatedSettings);
+          console.log('Settings saved successfully:', data[0]);
+          setSettings(data[0]);
           toast({
-            title: 'Settings saved successfully!',
+            title: 'Success',
+            description: 'Settings saved successfully!',
           });
+        } else {
+          throw new Error('No data returned after insert');
         }
       }
       
-      // Force a re-fetch to ensure we have the latest data
-      await loadSettings();
-      
     } catch (error: any) {
-      console.error('Error saving settings:', error);
+      console.error('Error in saveSettings:', error);
       toast({
         title: 'Failed to save settings',
         description: error.message,
         variant: 'destructive',
       });
       throw error;
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -186,18 +213,17 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
     await loadSettings();
   };
 
-  // Function to split store name into two parts
   const getStoreNameParts = () => {
-    const fullName = settings.store_name.trim();
+    const fullName = settings.store_name?.trim() || 'SS Fashions';
+    
     const words = fullName.split(' ');
     
     if (words.length >= 2) {
-      // Join first word(s) as first part, rest as second part
-      const firstPart = words[0];
-      const secondPart = words.slice(1).join(' ');
-      return { firstPart, secondPart };
+      return {
+        firstPart: words[0],
+        secondPart: words.slice(1).join(' ')
+      };
     } else {
-      // If only one word, split it in half
       const mid = Math.ceil(fullName.length / 2);
       return {
         firstPart: fullName.slice(0, mid),
